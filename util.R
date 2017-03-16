@@ -90,12 +90,12 @@ assign_binom_ll = function(MCN, clusters, purity) {
 #' @return A list containing two data.frames: (1) The mutations with mcn, ccf and assigned cluster and (2) Cluster number, size, proportion and ccf
 #' @author sd11
 assign_moritz = function(MCN, clusters, purity) {
-  best_cluster = sapply(MCN$D$CNF, function(x) if (is.na(x)) NA else which.min(abs(x-clusters_new$proportion)))
+  best_cluster = sapply(MCN$D$CNF, function(x) if (is.na(x)) NA else which.min(abs(x-clusters$proportion)))
   cluster_counts = table(best_cluster)
   clusters_new_2 = data.frame(clusters$cluster, sapply(clusters$cluster, function(x) cluster_counts[[as.character(x)]]), clusters$proportion, clusters$ccf)
   colnames(clusters_new_2) = colnames(clusters)
   
-  plot_data_2 = data.frame(mcn=mcn, ccf=MCN$D$CNF, cluster=factor(best_cluster, levels=rev(unique(sort(clusters_new$cluster)))))
+  plot_data_2 = data.frame(mcn=mcn, ccf=MCN$D$CNF, cluster=factor(best_cluster, levels=rev(unique(sort(clusters$cluster)))))
   plot_data_2$ccf = plot_data_2$ccf / purity
   return(list(plot_data=plot_data_2, clusters_new=clusters_new_2))
 }
