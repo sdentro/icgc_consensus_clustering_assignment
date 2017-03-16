@@ -200,23 +200,6 @@ save(final_pcawg11_output, timing, ccfs, file=file.path(outdir, paste0(samplenam
 ########################################################################
 # Plot
 ########################################################################
-base_plot = function(plot_data, x_variable, title=NA, fill="cluster") {
-  p = ggplot(plot_data) + aes_string(x=x_variable, y="..count..", fill=fill) + 
-    geom_histogram(binwidth=0.05, colour="black", position="stack") + 
-    ylab("Count") + theme(legend.position="bottom") + scale_fill_discrete(drop = FALSE)
-  if (!is.na(title)) {
-	  p = p + ggtitle(title)
-  }
-  return(p)
-}
-
-# g_legend <- function(a.gplot) { 
-#   tmp <- ggplot_gtable(ggplot_build(a.gplot)) 
-#   leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box") 
-#   legend <- tmp$grobs[[leg]] 
-#   return(legend)
-# } 
-
 #' Make assignment plot for both assignment strategies
 p = base_plot(snv_binom$plot_data, "ccf", "Consensus binomial assignment (control)") + xlim(0, 1.5) + geom_vline(data=clusters, mapping=aes(xintercept=ccf)) + xlab("ccf - snv")
 p = p + scale_fill_hue(labels = rev(paste0(" ", 
@@ -235,15 +218,23 @@ p4 = p4 + scale_fill_hue(labels = rev(paste0(" ",
                                            indel_binom$clusters$cluster, " : ", 
                                            round(indel_moritz$clusters$ccf, 2), "  ", 
                                            indel_moritz$clusters$n_ssms, "  ")))
+if (!is.null(vcf_sv)) {
+  p5 = base_plot(sv_moritz$plot_data, "ccf", "Consensus closest cluster assignment") + xlim(0, 1.5) + geom_vline(data=clusters, mapping=aes(xintercept=ccf)) + xlab("ccf - sv")
+  p5 = p5 + scale_fill_hue(labels = rev(paste0(" ", 
+                                               sv_binom$clusters$cluster, " : ", 
+                                               round(sv_moritz$clusters$ccf, 2), "  ", 
+                                               sv_moritz$clusters$n_ssms, "  ")))
+} else {
+  p5 = make_dummy_figure()
+}
 
-p5 = base_plot(sv_moritz$plot_data, "ccf", "Consensus closest cluster assignment") + xlim(0, 1.5) + geom_vline(data=clusters, mapping=aes(xintercept=ccf)) + xlab("ccf - sv")
-p5 = p5 + scale_fill_hue(labels = rev(paste0(" ", 
-                                             sv_binom$clusters$cluster, " : ", 
-                                             round(sv_moritz$clusters$ccf, 2), "  ", 
-                                             sv_moritz$clusters$n_ssms, "  ")))
-
-all_data = do.call(rbind, list(snv_binom$plot_data, indel_binom$plot_data, sv_binom$plot_data))
-all_data$type = factor(c(rep("SNV", nrow(snv_binom$plot_data)), rep("indel", nrow(indel_binom$plot_data)), rep("sv", nrow(sv_binom$plot_data))), levels=c("SNV", "indel", "sv"))
+if (!is.null(vcf_sv)) {
+  all_data = do.call(rbind, list(snv_binom$plot_data, indel_binom$plot_data, sv_binom$plot_data))
+  all_data$type = factor(c(rep("SNV", nrow(snv_binom$plot_data)), rep("indel", nrow(indel_binom$plot_data)), rep("sv", nrow(sv_binom$plot_data))), levels=c("SNV", "indel", "sv"))
+} else {
+  all_data = do.call(rbind, list(snv_binom$plot_data, indel_binom$plot_data))
+  all_data$type = factor(c(rep("SNV", nrow(snv_binom$plot_data)), rep("indel", nrow(indel_binom$plot_data))), levels=c("SNV", "indel", "sv"))
+}
 p6 = base_plot(all_data, "ccf", "All data", fill="type") + xlim(0, 1.5) + geom_vline(data=clusters, mapping=aes(xintercept=ccf)) + xlab("ccf")
 
 # my_legend = g_legend(p)
@@ -263,11 +254,6 @@ title = paste0(samplename, " - ",
                "Power ", power, " - ",
                "Clust size input ", paste(rev(clusters$n_ssms), collapse=", "))
 
-# png(file.path(outdir, paste0(samplename, "_final_assignment.png")), height=400, width=1000)
-# grid.arrange(arrangeGrob(p + theme(legend.position="none"), 
-#                          p3 + theme(legend.position="none"), ncol=2), 
-#              arrangeGrob(my_legend), nrow=2, heights=c(9,1), top=title)
-# dev.off()
 png(file.path(outdir, paste0(samplename, "_final_assignment.png")), height=400, width=2000)
 grid.arrange(p6, p, p3, p4, p5, nrow=1, top=title)
 dev.off()

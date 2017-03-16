@@ -313,7 +313,26 @@ pcawg11_output = function(snv_moritz, indel_moritz, sv_moritz, MCN, MCN_indel, M
               sv_mult=sv_mult))
 }
 
+########################################################################
+# Plotting
+########################################################################
+make_dummy_figure = function() { return(ggplot(dat=data.frame(x=rnorm(10), y=rnorm(10))) + aes(x=x, y=y) + geom_point(size=0.00001) + theme_bw()) }
 
+base_plot = function(plot_data, x_variable, title=NA, fill="cluster") {
+  p = ggplot(plot_data) + aes_string(x=x_variable, y="..count..", fill=fill) + 
+    geom_histogram(binwidth=0.05, colour="black", position="stack") + 
+    ylab("Count") + theme(legend.position="bottom") + scale_fill_discrete(drop = FALSE)
+  if (!is.na(title)) {
+    p = p + ggtitle(title)
+  }
+  return(p)
+}
 
+g_legend <- function(a.gplot) {
+  tmp <- ggplot_gtable(ggplot_build(a.gplot))
+  leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
+  legend <- tmp$grobs[[leg]]
+  return(legend)
+}
 
 
