@@ -255,8 +255,8 @@ get_summary_table_entry = function(samplename, summary_table, cluster_info, snv_
 pcawg11_output = function(snv_moritz, indel_moritz, sv_moritz, MCN, MCN_indel, MCN_sv, vcf_sv) {
   # Cluster locations
   final_clusters = snv_moritz$clusters
-  final_clusters$n_indels = indel_moritz$n_ssms
-  final_clusters$n_svs = ifelse(!is.null(vcf_sv), sv_moritz$n_ssms, NA)
+  final_clusters$n_indels = indel_moritz$clusters$n_ssms
+  final_clusters$n_svs = ifelse(!is.null(vcf_sv), sv_moritz$clusters$n_ssms, NA)
   
   # Assignments
   snv_assignments = data.frame(chr=as.character(seqnames(vcf_snv)), pos=as.numeric(start(vcf_snv)), cluster=snv_moritz$plot_data$cluster)
