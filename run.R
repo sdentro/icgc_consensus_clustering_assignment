@@ -4,11 +4,12 @@ samplename = args[1]
 outdir = args[2]
 snv_vcf_file = args[3]
 indel_vcf_file = args[4]
-bb_file = args[5]
-clust_file = args[6]
-purity_file = args[7]
-summary_table = args[8]
-svclone_file = args[9]
+sv_vcf_file = args[5]
+bb_file = args[6]
+clust_file = args[7]
+purity_file = args[8]
+summary_table = args[9]
+svclone_file = args[10]
 
 merge_clusters = F
 
@@ -50,7 +51,11 @@ clusters = read.table(clust_file, header=TRUE, sep="\t")
 
 vcf_snv <- readVcf(snv_vcf_file, genome="GRCh37")
 vcf_indel <- readVcf(indel_vcf_file, genome="GRCh37")
-vcf_sv <- prepare_svclone_output(svclone_file, vcf_template, genome="GRCh37")
+if (svclone_file=="NA") {
+  vcf_sv = NULL
+} else {
+  vcf_sv <- prepare_svclone_output(svclone_file, vcf_template, genome="GRCh37")
+}
 
 purityPloidy <- read.table(purity_file, header=TRUE, sep="\t")
 purity = purityPloidy$purity[purityPloidy$samplename==samplename]
@@ -82,21 +87,27 @@ clusters$ccf = clusters$proportion/purity
 #' Assign using Moritz' approach
 MCN <- computeMutCn(vcf_snv, bb, clusters, purity, gender=sex, isWgd=is_wgd)
 MCN_indel <- computeMutCn(vcf_indel, bb, clusters, purity, gender=sex, isWgd=is_wgd)
-MCN_sv <- computeMutCn(vcf_sv, bb, clusters, purity, gender=sex, isWgd=is_wgd)
+if (!is.null(vcf_sv)) {
+  MCN_sv <- computeMutCn(vcf_sv, bb, clusters, purity, gender=sex, isWgd=is_wgd)
+}
 
 ########################################################################
 # Create the assignment - binom probability
 ########################################################################
 snv_binom = assign_binom_ll(MCN, clusters, purity)
 indel_binom = assign_binom_ll(MCN_indel, clusters, purity)
-sv_binom = assign_binom_ll(MCN_sv, clusters, purity)
+if (!is.null(vcf_sv)) {
+  sv_binom = assign_binom_ll(MCN_sv, clusters, purity)
+}
 
 ########################################################################
 # Create the assignment - Kaixians approach
 ########################################################################
 snv_moritz = assign_moritz(MCN, clusters, purity)
 indel_moritz = assign_moritz(MCN_indel, clusters, purity)
-sv_moritz = assign_moritz(MCN_sv, clusters, purity)
+if (!is.null(vcf_sv)) {
+  sv_moritz = assign_moritz(MCN_sv, clusters, purity)
+}
 
 ########################################################################
 # Summary table entry
@@ -106,7 +117,7 @@ sample_entry = get_summary_table_entry(samplename=samplename,
                                        cluster_info=snv_moritz$clusters_new, 
                                        snv_assignment_table=snv_moritz$plot_data, 
                                        indel_assignment_table=indel_moritz$plot_data, 
-                                       sv_assignment_table=sv_moritz$plot_data)
+                                       sv_assignment_table=ifelse(!is.null(vcf_sv), sv_moritz$plot_data, NULL))
 
 write.table(sample_entry, file.path(outdir, paste0(samplename, "_summary_table_entry.txt")), row.names=F, sep="\t", quote=F)
 
@@ -141,23 +152,32 @@ indel_output = data.frame(chromosome=as.character(seqnames(vcf_indel)),
                           chromosome2=rep("NA", nrow(MCN_indel$D)),
                           position2=rep("NA", nrow(MCN_indel$D)))
 
-#' Some magic required to map back to chr/pos
-sv_timing = data.frame(chromosome=info(vcf_sv)$chr1,
-                       position=info(vcf_sv)$pos1,
-                       mut_type=rep("SV", nrow(MCN_sv$D)),
-                       timing=classifyMutations(MCN_sv$D),
-                       chromosome2=info(vcf_sv)$chr2,
-                       position2=info(vcf_sv)$pos2)
+if (!is.null(vcf_sv)) {
+  #' Some magic required to map back to chr/pos
+  sv_timing = data.frame(chromosome=info(vcf_sv)$chr1,
+                         position=info(vcf_sv)$pos1,
+                         mut_type=rep("SV", nrow(MCN_sv$D)),
+                         timing=classifyMutations(MCN_sv$D),
+                         chromosome2=info(vcf_sv)$chr2,
+                         position2=info(vcf_sv)$pos2)
+  
+  sv_output = data.frame(chromosome=info(vcf_sv)$chr1,
+                          position=info(vcf_sv)$pos1,
+                          mut_type=rep("SV", nrow(MCN_sv$D)),
+                          ccf=sv_moritz$clusters$ccf[match(sv_moritz$plot_data$cluster, sv_moritz$clusters$cluster)],
+                          chromosome2=info(vcf_sv)$chr2,
+                          position2=info(vcf_sv)$pos2)
+}
 
-snv_output = data.frame(chromosome=info(vcf_sv)$chr1,
-                        position=info(vcf_sv)$pos1,
-                        mut_type=rep("SV", nrow(MCN_sv$D)),
-                        ccf=sv_moritz$clusters$ccf[match(sv_moritz$plot_data$cluster, sv_moritz$clusters$cluster)],
-                        chromosome2=info(vcf_sv)$chr2,
-                        position2=info(vcf_sv)$pos2)
+if (!is.null(vcf_sv)) {
+  timing = rbind(snv_timing, indel_timing, sv_timing)
+  ccfs = rbind(snv_output, indel_output, sv_output)
+} else {
+  timing = rbind(snv_timing, indel_timing)
+  ccfs = rbind(snv_output, indel_output)
+}
 
-timing = rbind(snv_timing, indel_timing, sv_timing)
-ccfs = rbind(snv_output, indel_output, sv_output)
+
 ccfs$ccf = round(ccfs$ccf, 4)
 
 write.table(timing, file.path(outdir, paste0(samplename, "_timing_snv_indel_sv.txt")), row.names=F, sep="\t", quote=F)
