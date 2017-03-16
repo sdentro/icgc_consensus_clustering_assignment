@@ -1,0 +1,6 @@
+##fileformat=VCFv4.1
+##INFO=<ID=VAF,Number=1,Type=Float,Description="VAF from mutect read filter if available">
+##INFO=<ID=t_alt_count,Number=1,Type=Integer,Description="Tumour alt count from mutect read filter if available">
+##INFO=<ID=t_ref_count,Number=1,Type=Integer,Description="Tumour reference count from mutect read filter if available">
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
+1	1	.	T	C	.	.	VAF=0.0;t_alt_count=0;t_ref_count=0
