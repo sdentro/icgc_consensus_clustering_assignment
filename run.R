@@ -8,9 +8,24 @@ bb_file = args[5]
 clust_file = args[6]
 purity_file = args[7]
 summary_table = args[8]
-mult_file = args[9]
-dpc_assign_file = args[10]
-merge_clusters = F
+svclone_file = args[9]
+
+vcf_template = "~/repo/moritz_mut_assignment/template_icgc_consensus.vcf"
+
+# samplename = "040b1b6-b07a-4b6e-90ef-133523eaf412"
+# outdir = "output_cicc/" 
+# snv_vcf_file = "../..//processed_data/consensusCalls/consensusCalls_2016_10_12/filtered/0040b1b6-b07a-4b6e-90ef-133523eaf412.consensus.20160830.somatic.snv_mnv.vcf.gz"
+# indel_vcf_file = "../..//processed_data/consensusCalls/consensusCalls_2016_10_12/indel/0040b1b6-b07a-4b6e-90ef-133523eaf412.consensus.20161006.somatic.indel.vcf.gz"
+# bb_file = "../../processed_data/copynumberConsensus/final_consensus_20170119/working_group_output_full_profile/0040b1b6-b07a-4b6e-90ef-133523eaf412_segments.txt.gz"
+# clust_file = "consensus_clusters_cicc/0040b1b6-b07a-4b6e-90ef-133523eaf412_subclonal_structure.txt.gz"
+# purity_file = "consensus.20170119.purity.ploidy.txt.gz"
+# summary_table = "summary_table_2_20170303.txt"
+# svclone_file = "../../processed_data/sv_vafs_geoff/vafs/sv_vafs/0040b1b6-b07a-4b6e-90ef-133523eaf412_filtered_svs.tsv"
+
+
+# mult_file = args[9]
+# dpc_assign_file = args[10]
+# merge_clusters = F
 
 
 #vcf_file = "final/final_consensus_12oct_passonly/snv_mnv/0040b1b6-b07a-4b6e-90ef-133523eaf412.consensus.20160830.somatic.snv_mnv.vcf.gz"
@@ -28,23 +43,18 @@ library(grid)
 ########################################################################
 # Parse the input
 ########################################################################
-vcf_snv <- readVcf(snv_vcf_file, genome="GRCh37")
-vcf_indel <- readVcf(indel_vcf_file, genome="GRCh37")
-
-# TODO SV
-# data_sv = parse_sv_data("test_data/1e27cc8a-5394-4958-9af6-5ece1fe24516_most_likely_copynumbers.txt", "test_data/1e27cc8a-5394-4958-9af6-5ece1fe24516_vaf_ccf.txt")
-
 bb <- loadBB(bb_file)
 clusters = read.table(clust_file, header=TRUE, sep="\t")
+
+vcf_snv <- readVcf(snv_vcf_file, genome="GRCh37")
+vcf_indel <- readVcf(indel_vcf_file, genome="GRCh37")
+vcf_sv <- prepare_svclone_output(svclone_file, vcf_template, genome="GRCh37")
 
 purityPloidy <- read.table(purity_file, header=TRUE, sep="\t")
 purity = purityPloidy$purity[purityPloidy$samplename==samplename]
 ploidy = purityPloidy$ploidy[purityPloidy$samplename==samplename]
 
 summary_table = read.table(summary_table, header=T, stringsAsFactors=F)
-# Commented out for now
-# mult = read.table(mult_file, header=T, stringsAsFactors=F)
-# dpc_assign = read.table(dpc_assign_file, header=T, stringsAsFactors=F)
 sex = summary_table$inferred_sex[summary_table$samplename==samplename]
 is_wgd = purityPloidy$wgd_status[purityPloidy$samplename==samplename]=="wgd"
 
@@ -58,10 +68,6 @@ if (max(clusters$cluster) > nrow(clusters)) {
 	}
 }	
 
-
-#' Convert copy number clonal frequency to CCF
-# bb$clonal_frequency = bb$clonal_frequency / purity
-
 #' Merge clusters if requested
 if (merge_clusters) { clusters = mergeClusters(clusters) }
 
@@ -74,30 +80,21 @@ clusters$ccf = clusters$proportion/purity
 #' Assign using Moritz' approach
 MCN <- computeMutCn(vcf_snv, bb, clusters, purity, gender=sex, isWgd=is_wgd)
 MCN_indel <- computeMutCn(vcf_indel, bb, clusters, purity, gender=sex, isWgd=is_wgd)
-
-#' TODO: add SV
+MCN_sv <- computeMutCn(vcf_sv, bb, clusters, purity, gender=sex, isWgd=is_wgd)
 
 ########################################################################
 # Create the assignment - binom probability
 ########################################################################
 snv_binom = assign_binom_ll(MCN, clusters, purity)
-# plot_data = res$plot_data
-# clusters_new = res$clusters_new
-
 indel_binom = assign_binom_ll(MCN_indel, clusters, purity)
-
-#' TODO: add SV
+sv_binom = assign_binom_ll(MCN_sv, clusters, purity)
 
 ########################################################################
 # Create the assignment - Kaixians approach
 ########################################################################
 snv_moritz = assign_moritz(MCN, clusters, purity)
-# plot_data_2 = res$plot_data
-# clusters_new_2 = res$clusters_new
-
 indel_moritz = assign_moritz(MCN_indel, clusters, purity)
-
-#' TODO: add SV
+sv_moritz = assign_moritz(MCN_sv, clusters, purity)
 
 ########################################################################
 # Summary table entry
@@ -107,7 +104,7 @@ sample_entry = get_summary_table_entry(samplename=samplename,
                                        cluster_info=snv_moritz$clusters_new, 
                                        snv_assignment_table=snv_moritz$plot_data, 
                                        indel_assignment_table=indel_moritz$plot_data, 
-                                       sv_assignment_table=NULL)
+                                       sv_assignment_table=sv_moritz$plot_data)
 
 write.table(sample_entry, file.path(outdir, paste0(samplename, "_summary_table_entry.txt")), row.names=F, sep="\t", quote=F)
 
@@ -117,31 +114,53 @@ write.table(sample_entry, file.path(outdir, paste0(samplename, "_summary_table_e
 snv_timing = data.frame(chromosome=as.character(seqnames(vcf_snv)),
                         position=as.numeric(start(vcf_snv)),
                         mut_type=rep("SNV", nrow(MCN$D)),
-                        timing=classifyMutations(MCN$D))
+                        timing=classifyMutations(MCN$D),
+                        chromosome2=rep("NA", nrow(MCN$D)),
+                        position2=rep("NA", nrow(MCN$D)))
 
 snv_output = data.frame(chromosome=as.character(seqnames(vcf_snv)),
                         position=as.numeric(start(vcf_snv)),
                         mut_type=rep("SNV", nrow(MCN$D)),
-                        ccf=snv_moritz$clusters$ccf[match(snv_moritz$plot_data$cluster, snv_moritz$clusters$cluster)])
+                        ccf=snv_moritz$clusters$ccf[match(snv_moritz$plot_data$cluster, snv_moritz$clusters$cluster)],
+                        chromosome2=rep("NA", nrow(MCN$D)),
+                        position2=rep("NA", nrow(MCN$D)))
 
 indel_timing = data.frame(chromosome=as.character(seqnames(vcf_indel)),
                           position=as.numeric(start(vcf_indel)),
                           mut_type=rep("indel", nrow(MCN_indel$D)),
-                          timing=classifyMutations(MCN_indel$D))
+                          timing=classifyMutations(MCN_indel$D),
+                          chromosome2=rep("NA", nrow(MCN_indel$D)),
+                          position2=rep("NA", nrow(MCN_indel$D)))
 
 indel_output = data.frame(chromosome=as.character(seqnames(vcf_indel)),
                           position=as.numeric(start(vcf_indel)),
                           mut_type=rep("indel", nrow(MCN_indel$D)),
-                          ccf=indel_moritz$clusters$ccf[match(indel_moritz$plot_data$cluster, indel_moritz$clusters$cluster)])
+                          ccf=indel_moritz$clusters$ccf[match(indel_moritz$plot_data$cluster, indel_moritz$clusters$cluster)],
+                          chromosome2=rep("NA", nrow(MCN_indel$D)),
+                          position2=rep("NA", nrow(MCN_indel$D)))
 
-timing = rbind(snv_timing, indel_timing)
-ccfs = rbind(snv_output, indel_output)
+#' Some magic required to map back to chr/pos
+sv_timing = data.frame(chromosome=info(vcf_sv)$chr1,
+                       position=info(vcf_sv)$pos1,
+                       mut_type=rep("SV", nrow(MCN_sv$D)),
+                       timing=classifyMutations(MCN_sv$D),
+                       chromosome2=info(vcf_sv)$chr2,
+                       position2=info(vcf_sv)$pos2)
+
+snv_output = data.frame(chromosome=info(vcf_sv)$chr1,
+                        position=info(vcf_sv)$pos1,
+                        mut_type=rep("SV", nrow(MCN_sv$D)),
+                        ccf=sv_moritz$clusters$ccf[match(sv_moritz$plot_data$cluster, sv_moritz$clusters$cluster)],
+                        chromosome2=info(vcf_sv)$chr2,
+                        position2=info(vcf_sv)$pos2)
+
+timing = rbind(snv_timing, indel_timing, sv_timing)
+ccfs = rbind(snv_output, indel_output, sv_output)
 ccfs$ccf = round(ccfs$ccf, 4)
 
-write.table(timing, file.path(outdir, paste0(samplename, "_timing_snv_indel.txt")), row.names=F, sep="\t", quote=F)
-write.table(ccfs, file.path(outdir, paste0(samplename, "_ccfs_snv_indel.txt")), row.names=F, sep="\t", quote=F)
+write.table(timing, file.path(outdir, paste0(samplename, "_timing_snv_indel_sv.txt")), row.names=F, sep="\t", quote=F)
+write.table(ccfs, file.path(outdir, paste0(samplename, "_ccfs_snv_indel_sv.txt")), row.names=F, sep="\t", quote=F)
 
-#' TODO: add SV
 
 ########################################################################
 # Plot
@@ -154,22 +173,27 @@ base_plot = function(plot_data, x_variable, title=NA) {
   return(p)
 }
 
-g_legend <- function(a.gplot) { 
-  tmp <- ggplot_gtable(ggplot_build(a.gplot)) 
-  leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box") 
-  legend <- tmp$grobs[[leg]] 
-  return(legend)
-} 
+# g_legend <- function(a.gplot) { 
+#   tmp <- ggplot_gtable(ggplot_build(a.gplot)) 
+#   leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box") 
+#   legend <- tmp$grobs[[leg]] 
+#   return(legend)
+# } 
 
 #' Make assignment plot for both assignment strategies
 p = base_plot(snv_binom$plot_data, "ccf", "Consensus binomial assignment") + xlim(0, 1.5) + geom_vline(data=clusters, mapping=aes(xintercept=ccf))
-# p2 = base_plot(plot_data, "mcn", "Consensus binomial assignment") + xlim(0, 4)
-p3 = base_plot(snv_moritz$plot_data, "ccf", "Consensus closest cluster assignment") + xlim(0, 1.5) + geom_vline(data=clusters, mapping=aes(xintercept=ccf))
 p = p + scale_fill_hue(labels = rev(paste0(" ", 
                                            snv_binom$clusters$cluster, " : ", 
                                            round(snv_binom$clusters$ccf, 2), "  ", 
                                            snv_binom$clusters$n_ssms, "  ")))
-my_legend = g_legend(p)
+
+p3 = base_plot(snv_moritz$plot_data, "ccf", "Consensus closest cluster assignment") + xlim(0, 1.5) + geom_vline(data=clusters, mapping=aes(xintercept=ccf))
+p = p + scale_fill_hue(labels = rev(paste0(" ", 
+                                           snv_binom$clusters$cluster, " : ", 
+                                           round(snv_moritz$clusters$ccf, 2), "  ", 
+                                           snv_moritz$clusters$n_ssms, "  ")))
+
+# my_legend = g_legend(p)
 
 if (samplename %in% summary_table$samplename) {
   power = summary_table$nrpcc[summary_table$samplename==samplename]
@@ -183,13 +207,16 @@ title = paste0(samplename, " - ",
                "SNVs ", nrow(snv_binom$plot_data), " - ",
                "Purity ", purity, " - ",
                "Ploidy ", ploidy, " - ",
-               "Power ", power)
+               "Power ", power, " - ",
+               "Clust size input ", paste(rev(clusters$n_ssms), collapse=", "))
 
-
+# png(file.path(outdir, paste0(samplename, "_final_assignment.png")), height=400, width=1000)
+# grid.arrange(arrangeGrob(p + theme(legend.position="none"), 
+#                          p3 + theme(legend.position="none"), ncol=2), 
+#              arrangeGrob(my_legend), nrow=2, heights=c(9,1), top=title)
+# dev.off()
 png(file.path(outdir, paste0(samplename, "_final_assignment.png")), height=400, width=1000)
-grid.arrange(arrangeGrob(p + theme(legend.position="none"), 
-                         p3 + theme(legend.position="none"), ncol=2), 
-             arrangeGrob(my_legend), nrow=2, heights=c(9,1), top=title)
+grid.arrange(p, p3, nrow=1, top=title)
 dev.off()
 
 save.image(file.path(outdir, paste0(samplename, "_assignment.RData")))

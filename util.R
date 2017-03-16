@@ -28,17 +28,43 @@ parse_sv_data = function(cn_assignment_file, vafs_file) {
   return(as.data.frame(do.call(rbind, res)))
 }
 
-
-#' Create a custom temp SV vcf file that goes into computeMutCn. Using the dummy vcf means
-#' the computeMutCn does not need to be modified for the different use case that are SVs.
-create_dummy_sv_vcf = function(svclone_output) {
+#' Transform the SVclone raw data into a vcf object
+#' 
+#' @param svclone_file SVclone vaf file with copy number mapping
+#' @param vcf_template Path to a vcf template file
+#' @param genome The reference genome to pass to readVcf
+#' 
+#' @return A basic vcf file with chromosome/position according to the SVclone
+#' preferred mapping (take the end that corresponds to the one mapped to copy
+#' number) and t_alt_count and t_ref_count filled in according to the given
+#' adjusted support and depth. For convenience the original chr1/pos1 and chr2/pos2
+#' columns are also provided.
+#' @author sd11
+prepare_svclone_output = function(svclone_file, vcf_template, genome) {
+  dat = read.table(svclone_file, header=T, stringsAsFactors=F, sep="\t")
   
-  #' Get preferred breakpoints -> thtat are mapped to cna <- add chr/pos of selected to parse_sv_data output
-  #' 
-  #' Format into vcf <- load a template
-  #' 
-  #' return(vcf)
+  mutCount = dat$adjusted_support
+  WTCount = dat$adjusted_depth-dat$adjusted_support
   
+  #' Select the preferred SV end from SVclone
+  sv_chrom_pos = data.frame()
+  for (i in 1:nrow(dat)) {
+    # Preferred copy number
+    if (dat$preferred_side[i]==0) {
+      sv_chrom_pos = rbind(sv_chrom_pos, data.frame(chrom=dat$chr1[i], pos=dat$pos1[i]))
+    } else {
+      sv_chrom_pos = rbind(sv_chrom_pos, data.frame(chrom=dat$chr2[i], pos=dat$pos2[i]))
+    }
+  }
+  
+  # Now push this into a VCF format with just alt and ref counts
+  v <- readVcf(snv_vcf_file, genome=genome)
+  d = data.frame(chromosome=sv_chrom_pos$chrom, position=sv_chrom_pos$pos)
+  d.gr = makeGRangesFromDataFrame(d, start.field="position", end.field="position")
+  d.info = DataFrame(t_alt_count=mutCount, t_ref_count=WTCount, chr1=dat$chr1, pos1=dat$pos1, chr2=dat$chr2, pos2=dat$pos2)
+  d.v = VCF(rowRanges=d.gr, exptData=metadata(v), geno=geno(v), fixed=rep(fixed(v)[1,], nrow(d)), colData=colData(v), info=d.info)
+  
+  return(d.v)
 }
 
 ########################################################################
