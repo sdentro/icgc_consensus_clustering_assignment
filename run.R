@@ -10,6 +10,8 @@ purity_file = args[7]
 summary_table = args[8]
 svclone_file = args[9]
 
+merge_clusters = F
+
 vcf_template = "~/repo/moritz_mut_assignment/template_icgc_consensus.vcf"
 
 # samplename = "040b1b6-b07a-4b6e-90ef-133523eaf412"
