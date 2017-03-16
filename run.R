@@ -1,14 +1,15 @@
 args = commandArgs(T)
 
 samplename = args[1]
-snv_vcf_file = args[2]
-indel_vcf_file = args[3]
-bb_file = args[4]
-clust_file = args[5]
-purity_file = args[6]
-summary_table = args[7]
-mult_file = args[8]
-dpc_assign_file = args[9]
+outdir = args[2]
+snv_vcf_file = args[3]
+indel_vcf_file = args[4]
+bb_file = args[5]
+clust_file = args[6]
+purity_file = args[7]
+summary_table = args[8]
+mult_file = args[9]
+dpc_assign_file = args[10]
 merge_clusters = F
 
 
@@ -107,7 +108,7 @@ sample_entry = get_summary_table_entry(samplename=samplename,
                                        assignments_table=snv_moritz$plot_data, 
                                        indel_assignments=indel_moritz$plot_data, 
                                        sv_assignments=NULL)
-write.table(sample_entry, file=paste0(samplename, "_summary_table_entry.txt"), quote=F, sep="\t", row.names=F)
+readr::write_tsv(sample_entry, file.path(outdir, paste0(samplename, "_summary_table_entry.txt")))
 
 ########################################################################
 # Output to share with PCAWG
@@ -133,8 +134,8 @@ indel_output = data.frame(chromosome=as.character(seqnames(vcf_indel)),
 timing = rbind(snv_timing, indel_timing)
 ccfs = rbind(snv_output, indel_output)
 
-readr::write_tsv(timing, paste0(samplename, "_timing_snv_indel.txt"))
-readr::write_tsv(ccfs, paste0(samplename, "_ccfs_snv_indel.txt"))
+readr::write_tsv(timing, file.path(outdir, paste0(samplename, "_timing_snv_indel.txt")))
+readr::write_tsv(ccfs, file.path(outdir, paste0(samplename, "_ccfs_snv_indel.txt")))
 
 #' TODO: add SV
 
@@ -181,13 +182,13 @@ title = paste0(samplename, " - ",
                "Power ", power)
 
 
-png(paste0(samplename, "_final_assignment.png"), height=400, width=1000)
+png(file.path(outdir, paste0(samplename, "_final_assignment.png")), height=400, width=1000)
 grid.arrange(arrangeGrob(p + theme(legend.position="none"), 
                          p3 + theme(legend.position="none"), ncol=2), 
              arrangeGrob(my_legend), nrow=2, heights=c(9,1), top=title)
 dev.off()
 
-save.image(paste0(samplename, "_assignment.RData"))
+save.image(file.path(outdir, paste0(samplename, "_assignment.RData")))
 
 # No longer used
 # #' DPClust output - sync the data frames
