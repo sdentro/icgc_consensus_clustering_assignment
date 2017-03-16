@@ -104,10 +104,11 @@ indel_moritz = assign_moritz(MCN_indel, clusters, purity)
 ########################################################################
 sample_entry = get_summary_table_entry(samplename=samplename, 
                                        summary_table=summary_table, 
-                                       clusters=snv_moritz$clusters_new, 
-                                       assignments_table=snv_moritz$plot_data, 
-                                       indel_assignments=indel_moritz$plot_data, 
-                                       sv_assignments=NULL)
+                                       cluster_info=snv_moritz$clusters_new, 
+                                       snv_assignment_table=snv_moritz$plot_data, 
+                                       indel_assignment_table=indel_moritz$plot_data, 
+                                       sv_assignment_table=NULL)
+
 readr::write_tsv(sample_entry, file.path(outdir, paste0(samplename, "_summary_table_entry.txt")))
 
 ########################################################################
