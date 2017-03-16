@@ -109,7 +109,7 @@ sample_entry = get_summary_table_entry(samplename=samplename,
                                        indel_assignment_table=indel_moritz$plot_data, 
                                        sv_assignment_table=NULL)
 
-readr::write_tsv(sample_entry, file.path(outdir, paste0(samplename, "_summary_table_entry.txt")))
+write.table(sample_entry, file.path(outdir, paste0(samplename, "_summary_table_entry.txt")), row.names=F, sep="\t", quote=F)
 
 ########################################################################
 # Output to share with PCAWG
@@ -135,8 +135,8 @@ indel_output = data.frame(chromosome=as.character(seqnames(vcf_indel)),
 timing = rbind(snv_timing, indel_timing)
 ccfs = rbind(snv_output, indel_output)
 
-readr::write_tsv(timing, file.path(outdir, paste0(samplename, "_timing_snv_indel.txt")))
-readr::write_tsv(ccfs, file.path(outdir, paste0(samplename, "_ccfs_snv_indel.txt")))
+write.table(timing, file.path(outdir, paste0(samplename, "_timing_snv_indel.txt")), row.names=F, sep="\t", quote=F)
+write.table(ccfs, file.path(outdir, paste0(samplename, "_ccfs_snv_indel.txt")), row.names=F, sep="\t", quote=F)
 
 #' TODO: add SV
 
