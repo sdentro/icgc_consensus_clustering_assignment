@@ -458,21 +458,23 @@ classifyMutations <- function(x, reclassify=c("missing","all","none")) {
 	reclassify <- match.arg(reclassify)
 	if(nrow(x) ==0 )
 		return(factor(NULL, levels=c("clonal [early]", "clonal [late]", "clonal [NA]", "subclonal")))
+	
 	if(class(x)=="CollapsedVCF")
-	x <- info(x)
+	  x <- info(x)
+	
 	.clsfy <- function(x) {
 		cls <- x$CLS
-		if(reclassify %in% c("missing", "none") &! is.null(cls)){
+		if(reclassify %in% c("missing", "none") &! is.null(cls)) {
 			if(all(unique(cls) %in% c("early", "late", "clonal", "subclonal")))
 				cls <- factor(cls, levels=c("early", "late", "clonal", "subclonal"), labels=c("clonal [early]", "clonal [late]", "clonal [NA]", "subclonal"))
 			cls <- as.character(cls)
 			cls[cls=="NA"] <- NA
 			if(reclassify=="missing" & any(is.na(cls)))
 				cls[is.na(cls)] <- paste(factor(apply(as.matrix(x[is.na(cls), c("pGain","pSingle","pSub")]), 1, function(x) if(all(is.na(x))) NA else which.max(x)), levels=1:3, labels=c("clonal [early]", "clonal [late]","subclonal"))) ## reclassify missing
-		}else{
-			cls <- paste(factor(apply(as.matrix(x[, c("pGain","pSingle","pSub")]), 1, function(x) if(all(is.na(x))) NA else which.max(x)), levels=1:3, labels=c("clonal [early]", "clonal [late]","subclonal"))) ## reclassify missing
+	  } else {
+		  cls <- paste(factor(apply(as.matrix(x[, c("pGain","pSingle","pSub")]), 1, function(x) if(all(is.na(x))) NA else which.max(x)), levels=1:3, labels=c("clonal [early]", "clonal [late]","subclonal"))) ## reclassify missing
 			
-		}
+	  }
 		cls[x$pGain==0 & cls!="subclonal"] <- "clonal [NA]"
 		if(!is.null(x$MajCN))
 			cls[cls!="subclonal" & (x$MajCN == 1 | x$MinCN == 1) & abs(x$MutCN - x$MutDeltaCN -1) <= 0.0001] <- "clonal [NA]"

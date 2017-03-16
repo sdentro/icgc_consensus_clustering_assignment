@@ -116,7 +116,7 @@ readr::write_tsv(sample_entry, file.path(outdir, paste0(samplename, "_summary_ta
 ########################################################################
 snv_timing = data.frame(chromosome=as.character(seqnames(vcf_snv)),
                         position=as.numeric(start(vcf_snv)),
-                        mut_type=rep("SNV", nrow(MCD$D)),
+                        mut_type=rep("SNV", nrow(MCN$D)),
                         timing=classifyMutations(MCN$D))
 
 snv_output = data.frame(chromosome=as.character(seqnames(vcf_snv)),
@@ -130,7 +130,7 @@ indel_timing = data.frame(chromosome=as.character(seqnames(vcf_indel)),
 
 indel_output = data.frame(chromosome=as.character(seqnames(vcf_indel)),
                           position=as.numeric(start(vcf_indel)),
-                          ccf=clusters_new_2$ccf[match(indel_moritz$plot_data$cluster, indel_moritz$clusters$cluster)])
+                          ccf=indel_moritz$clusters$ccf[match(indel_moritz$plot_data$cluster, indel_moritz$clusters$cluster)])
 
 timing = rbind(snv_timing, indel_timing)
 ccfs = rbind(snv_output, indel_output)

@@ -132,9 +132,9 @@ get_clusters_entry = function(clusters, assignments_table, indel_assignments=NUL
   indel_clonal = 0
   indel_subclonal = 0
   indel_superclonal = 0
-  sample_entry$sv_clonal = 0
-  sample_entry$sv_subclonal = 0
-  sample_entry$sv_superclonal = 0
+  sv_clonal = 0
+  sv_subclonal = 0
+  sv_superclonal = 0
   cluster_locations = c()
   cluster_sizes = c()
   for (cluster in rev(kept_clusters)) {
@@ -210,7 +210,7 @@ get_summary_table_entry = function(samplename, summary_table, cluster_info, snv_
   
   # Combine into single row matrix and then copy the updated values into the sample_entry
   res = as.data.frame(matrix(unlist(clust_stats), ncol=11, byrow=T))
-  colnames(res) = c("num_subclones", "num_clonal", "num_subclonal", "num_superclones", "num_superclonal", "indel_clonal", "indel_subclonal", "indel_superclonal")
+  colnames(res) = c("num_subclones", "num_clonal", "num_subclonal", "num_superclones", "num_superclonal", "indel_clonal", "indel_subclonal", "indel_superclonal", "sv_clonal", "sv_subclonal", "sv_superclonal")
   res$frac_clonal = round(res$num_clonal / (res$num_subclonal+res$num_clonal), 3)
   sample_entry[, colnames(sample_entry) %in% colnames(res)] = res
   
