@@ -133,8 +133,8 @@ assign_moritz = function(MCN, clusters, purity) {
 
 get_clusters_entry = function(clusters, assignments_table, indel_assignments=NULL, sv_assignments=NULL, min_clonal_ccf=0.9, max_clonal_ccf=1.1) {
   assignments = table(assignments_table$cluster)
-  if (!is.null(indel_assignments)) { indel_assignments = table(indel_assignments$cluster) }
-  if (!is.null(sv_assignments)) { sv_assignments = table(sv_assignments$cluster) }
+  # if (!is.null(indel_assignments)) { indel_assignments = table(indel_assignments$cluster) }
+  # if (!is.null(sv_assignments)) { sv_assignments = table(sv_assignments$cluster) }
   
   total_muts = sum(assignments)
   if (total_muts < 100) {
@@ -167,30 +167,33 @@ get_clusters_entry = function(clusters, assignments_table, indel_assignments=NUL
     if (clusters[clusters$cluster.no==cluster,]$location > min_clonal_ccf) {
       # Clonal
       num_clonal = num_clonal + assignments[cluster]
-      if (!is.null(indel_assignments)) { indel_clonal = indel_clonal + indel_assignments[cluster] }
-      if (!is.null(sv_assignments)) { sv_clonal = sv_clonal + sv_assignments[cluster] }
+      # if (!is.null(indel_assignments)) { indel_clonal = indel_clonal + indel_assignments[cluster] }
+      if (!is.null(indel_assignments)) { indel_clonal = indel_clonal + sum(indel_assignments$cluster==cluster, na.rm=T) }
+      # if (!is.null(sv_assignments)) { sv_clonal = sv_clonal + sv_assignments[cluster] }
+      if (!is.null(sv_assignments)) { sv_clonal = sv_clonal + sum(sv_assignments$cluster==cluster, na.rm=T) }
       
       if (clusters[clusters$cluster.no==cluster,]$location > max_clonal_ccf & ! cluster %in% superclones_to_merge) {
         # Superclonal
         num_superclones = num_superclones + 1
         num_superclonal = num_superclonal + assignments[cluster]
-        if (!is.null(indel_assignments)) { indel_superclonal = indel_superclonal + indel_assignments[cluster] }
+        # if (!is.null(indel_assignments)) { indel_superclonal = indel_superclonal + indel_assignments[cluster] }
+        if (!is.null(indel_assignments)) { indel_superclonal = indel_superclonal + sum(indel_assignments$cluster==cluster, na.rm=T) }
+        if (!is.null(sv_assignments)) { sv_superclonal = sv_superclonal + sum(sv_assignments$cluster==cluster, na.rm=T) }
       }
     } else {
       # Subclonal
       num_subclonal = num_subclonal + assignments[cluster]
       num_subclones = num_subclones + 1
-      if (!is.null(indel_assignments)) { indel_subclonal = indel_subclonal + indel_assignments[cluster] }
-      if (!is.null(sv_assignments)) { sv_subclonal = sv_subclonal + sv_assignments[cluster] }
+      # if (!is.null(indel_assignments)) { indel_subclonal = indel_subclonal + indel_assignments[cluster] }
+      if (!is.null(indel_assignments)) { indel_subclonal = indel_subclonal + sum(indel_assignments$cluster==cluster, na.rm=T) }
+      # if (!is.null(sv_assignments)) { sv_subclonal = sv_subclonal + sv_assignments[cluster] }
+      if (!is.null(sv_assignments)) { sv_subclonal = sv_subclonal + sum(sv_assignments$cluster==cluster, na.rm=T) }
     }
     
-    #' TODO: indel and sv here required ?
     if (! cluster %in% superclones_to_merge) {
       cluster_locations = c(cluster_locations, clusters[clusters$cluster.no==cluster,]$location)
       
       temp_cluster_size = assignments[cluster]
-      if (!is.null(indel_assignments)) { temp_cluster_size = temp_cluster_size + indel_assignments[cluster] }
-      if (!is.null(sv_assignments)) { temp_cluster_size = temp_cluster_size + sv_assignments[cluster] }
       cluster_sizes = c(cluster_sizes, temp_cluster_size)
     }
   }
@@ -237,8 +240,8 @@ get_summary_table_entry = function(samplename, summary_table, cluster_info, snv_
   # Combine into single row matrix and then copy the updated values into the sample_entry
   res = as.data.frame(matrix(unlist(clust_stats), ncol=11, byrow=T))
   colnames(res) = c("num_subclones", "num_clonal", "num_subclonal", "num_superclones", "num_superclonal", "indel_clonal", "indel_subclonal", "indel_superclonal", "sv_clonal", "sv_subclonal", "sv_superclonal")
-  res$frac_clonal = round(res$num_clonal / (res$num_subclonal+res$num_clonal), 3)
   sample_entry[, colnames(sample_entry) %in% colnames(res)] = res
+  sample_entry$frac_clonal = round(res$num_clonal / (res$num_subclonal+res$num_clonal), 3)
   
   # Append cluster details
   res = lapply(clust_details, function(x) data.frame(paste(round(x[[1]], 4), collapse=";"), paste(x[[2]], collapse=";")))
@@ -256,7 +259,11 @@ pcawg11_output = function(snv_moritz, indel_moritz, sv_moritz, MCN, MCN_indel, M
   # Cluster locations
   final_clusters = snv_moritz$clusters
   final_clusters$n_indels = indel_moritz$clusters$n_ssms
-  final_clusters$n_svs = ifelse(!is.null(vcf_sv), sv_moritz$clusters$n_ssms, NA)
+  if (!is.null(vcf_sv)) {
+    final_clusters$n_svs = sv_moritz$clusters$n_ssms
+  } else {
+    final_clusters$n_svs = NA 
+  }
   
   # Assignments
   snv_assignments = data.frame(chr=as.character(seqnames(vcf_snv)), pos=as.numeric(start(vcf_snv)), cluster=snv_moritz$plot_data$cluster)
