@@ -60,7 +60,7 @@ if (max(clusters$cluster) > nrow(clusters)) {
 
 
 #' Convert copy number clonal frequency to CCF
-bb$clonal_frequency = bb$clonal_frequency / purity
+# bb$clonal_frequency = bb$clonal_frequency / purity
 
 #' Merge clusters if requested
 if (merge_clusters) { clusters = mergeClusters(clusters) }
@@ -134,6 +134,7 @@ indel_output = data.frame(chromosome=as.character(seqnames(vcf_indel)),
 
 timing = rbind(snv_timing, indel_timing)
 ccfs = rbind(snv_output, indel_output)
+ccfs$ccf = round(ccfs$ccf, 4)
 
 write.table(timing, file.path(outdir, paste0(samplename, "_timing_snv_indel.txt")), row.names=F, sep="\t", quote=F)
 write.table(ccfs, file.path(outdir, paste0(samplename, "_ccfs_snv_indel.txt")), row.names=F, sep="\t", quote=F)
