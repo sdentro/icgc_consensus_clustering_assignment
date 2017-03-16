@@ -107,6 +107,9 @@ assign_moritz = function(MCN, clusters, purity) {
 
 get_clusters_entry = function(clusters, assignments_table, indel_assignments=NULL, sv_assignments=NULL, min_clonal_ccf=0.9, max_clonal_ccf=1.1) {
   assignments = table(assignments_table$cluster)
+  if (!is.null(indel_assignments)) { indel_assignments = table(indel_assignments$cluster) }
+  if (!is.null(sv_assignments)) { sv_assignments = table(sv_assignments$cluster) }
+  
   total_muts = sum(assignments)
   if (total_muts < 100) {
     threshold = total_muts*FRAC_SNVS_CLUSTER
