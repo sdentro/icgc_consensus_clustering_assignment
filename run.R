@@ -177,12 +177,12 @@ if (!is.null(vcf_sv)) {
   ccfs = rbind(snv_output, indel_output)
 }
 
-
 ccfs$ccf = round(ccfs$ccf, 4)
 
 write.table(timing, file.path(outdir, paste0(samplename, "_timing_snv_indel_sv.txt")), row.names=F, sep="\t", quote=F)
 write.table(ccfs, file.path(outdir, paste0(samplename, "_ccfs_snv_indel_sv.txt")), row.names=F, sep="\t", quote=F)
-
+final_pcawg11_output = pcawg11_output(snv_moritz, indel_moritz, sv_moritz, MCN, MCN_indel, MCN_sv, vcf_sv)
+save(final_pcawg11_output, file=file.path(outdir, paste0(samplename, "_pcawg11_output.RData")))
 
 ########################################################################
 # Plot
@@ -203,17 +203,29 @@ base_plot = function(plot_data, x_variable, title=NA) {
 # } 
 
 #' Make assignment plot for both assignment strategies
-p = base_plot(snv_binom$plot_data, "ccf", "Consensus binomial assignment") + xlim(0, 1.5) + geom_vline(data=clusters, mapping=aes(xintercept=ccf))
+p = base_plot(snv_binom$plot_data, "ccf - snv", "Consensus binomial assignment") + xlim(0, 1.5) + geom_vline(data=clusters, mapping=aes(xintercept=ccf))
 p = p + scale_fill_hue(labels = rev(paste0(" ", 
                                            snv_binom$clusters$cluster, " : ", 
                                            round(snv_binom$clusters$ccf, 2), "  ", 
                                            snv_binom$clusters$n_ssms, "  ")))
 
-p3 = base_plot(snv_moritz$plot_data, "ccf", "Consensus closest cluster assignment") + xlim(0, 1.5) + geom_vline(data=clusters, mapping=aes(xintercept=ccf))
-p = p + scale_fill_hue(labels = rev(paste0(" ", 
+p3 = base_plot(snv_moritz$plot_data, "ccf - snv", "Consensus closest cluster assignment") + xlim(0, 1.5) + geom_vline(data=clusters, mapping=aes(xintercept=ccf))
+p3 = p3 + scale_fill_hue(labels = rev(paste0(" ", 
                                            snv_binom$clusters$cluster, " : ", 
                                            round(snv_moritz$clusters$ccf, 2), "  ", 
                                            snv_moritz$clusters$n_ssms, "  ")))
+
+p4 = base_plot(indel_moritz$plot_data, "ccf - indel", "Consensus closest cluster assignment") + xlim(0, 1.5) + geom_vline(data=clusters, mapping=aes(xintercept=ccf))
+p4 = p4 + scale_fill_hue(labels = rev(paste0(" ", 
+                                           indel_binom$clusters$cluster, " : ", 
+                                           round(indel_moritz$clusters$ccf, 2), "  ", 
+                                           indel_moritz$clusters$n_ssms, "  ")))
+
+p5 = base_plot(indel_moritz$plot_data, "ccf - sv", "Consensus closest cluster assignment") + xlim(0, 1.5) + geom_vline(data=clusters, mapping=aes(xintercept=ccf))
+p5 = p5 + scale_fill_hue(labels = rev(paste0(" ", 
+                                             sv_binom$clusters$cluster, " : ", 
+                                             round(sv_moritz$clusters$ccf, 2), "  ", 
+                                             sv_moritz$clusters$n_ssms, "  ")))
 
 # my_legend = g_legend(p)
 
@@ -237,8 +249,8 @@ title = paste0(samplename, " - ",
 #                          p3 + theme(legend.position="none"), ncol=2), 
 #              arrangeGrob(my_legend), nrow=2, heights=c(9,1), top=title)
 # dev.off()
-png(file.path(outdir, paste0(samplename, "_final_assignment.png")), height=400, width=1000)
-grid.arrange(p, p3, nrow=1, top=title)
+png(file.path(outdir, paste0(samplename, "_final_assignment.png")), height=400, width=1500)
+grid.arrange(p, p3, p4, p5, nrow=1, top=title)
 dev.off()
 
 save.image(file.path(outdir, paste0(samplename, "_assignment.RData")))

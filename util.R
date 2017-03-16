@@ -248,3 +248,65 @@ get_summary_table_entry = function(samplename, summary_table, cluster_info, snv_
   return(sample_entry)
 }
 
+########################################################################
+# PCAWG11 Calibration format
+########################################################################
+
+pcawg11_output = function(snv_moritz, indel_moritz, sv_moritz, MCN, MCN_indel, MCN_sv, vcf_sv) {
+  # Cluster locations
+  final_clusters = snv_moritz$clusters
+  final_clusters$n_indels = indel_moritz$n_ssms
+  final_clusters$n_svs = ifelse(!is.null(vcf_sv), sv_moritz$n_ssms, NA)
+  
+  # Assignments
+  snv_assignments = data.frame(chr=as.character(seqnames(vcf_snv)), pos=as.numeric(start(vcf_snv)), cluster=snv_moritz$plot_data$cluster)
+  indel_assignments = data.frame(chr=as.character(seqnames(vcf_indel)), pos=as.numeric(start(vcf_indel)), cluster=indel_moritz$plot_data$cluster)
+  if (!is.null(vcf_sv)) {
+    nclusters = nrow(final_clusters)
+    nsvs = nrow(sv_moritz$plot_data)
+    
+    probs = matrix(0, ncol=nclusters, nrow=nsvs)
+    for (i in 1:nsvs) {
+      probs[i, sv_moritz$plot_data$cluster[i]] = 1
+    }
+    probs = as.data.frame(probs)
+    colnames(probs) = paste("cluster", 1:nclusters, sep="_")
+    sv_assignments = data.frame(chr=info(vcf_sv)$chr1, pos=info(vcf_sv)$pos1, chr2=info(vcf_sv)$chr2, pos2=info(vcf_sv)$pos2, probs)
+  } else {
+    sv_assignments = NULL
+  }
+  
+  # Multiplicities
+  snv_mult = data.frame(chr=snv_assignments$chr, 
+                        pos=snv_assignments$pos, 
+                        tumour_copynumber=MCN$D$MajCN+MCN$D$MinCN, 
+                        multiplicity=MCN$D$MutCN, multiplicity_options=NA, probabilities=NA)
+  
+  indel_mult = data.frame(chr=indel_assignments$chr, 
+                        pos=indel_assignments$pos, 
+                        tumour_copynumber=MCN_indel$D$MajCN+MCN_indel$D$MinCN, 
+                        multiplicity=MCN_indel$D$MutCN, multiplicity_options=NA, probabilities=NA)
+  
+  if (!is.null(vcf_sv)) {
+    sv_mult = data.frame(chr=sv_assignments$chr, 
+                            pos=sv_assignments$pos, 
+                            chr2=sv_assignments$chr2,
+                            pos2=sv_assignments$pos2,
+                            tumour_copynumber=MCN_sv$D$MajCN+MCN_sv$D$MinCN, 
+                            multiplicity=MCN_sv$D$MutCN, multiplicity_options=NA, probabilities=NA)
+  } else {
+    sv_mult = NULL
+  }
+  return(list(final_clusters=final_clusters, 
+              snv_assignments=snv_assignments, 
+              indel_assignments=indel_assignments,
+              sv_assignments=sv_assignments,
+              snv_mult=snv_mult,
+              indel_mult=indel_mult,
+              sv_mult=sv_mult))
+}
+
+
+
+
+
