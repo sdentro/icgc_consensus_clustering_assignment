@@ -121,6 +121,7 @@ snv_timing = data.frame(chromosome=as.character(seqnames(vcf_snv)),
 
 snv_output = data.frame(chromosome=as.character(seqnames(vcf_snv)),
                         position=as.numeric(start(vcf_snv)),
+                        mut_type=rep("SNV", nrow(MCN$D)),
                         ccf=snv_moritz$clusters$ccf[match(snv_moritz$plot_data$cluster, snv_moritz$clusters$cluster)])
 
 indel_timing = data.frame(chromosome=as.character(seqnames(vcf_indel)),
@@ -130,6 +131,7 @@ indel_timing = data.frame(chromosome=as.character(seqnames(vcf_indel)),
 
 indel_output = data.frame(chromosome=as.character(seqnames(vcf_indel)),
                           position=as.numeric(start(vcf_indel)),
+                          mut_type=rep("indel", nrow(MCN_indel$D)),
                           ccf=indel_moritz$clusters$ccf[match(indel_moritz$plot_data$cluster, indel_moritz$clusters$cluster)])
 
 timing = rbind(snv_timing, indel_timing)
