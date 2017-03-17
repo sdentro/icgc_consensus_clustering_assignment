@@ -10,13 +10,14 @@ clust_file = args[7]
 purity_file = args[8]
 summary_table = args[9]
 svclone_file = args[10]
-
-merge_clusters = F
-
-vcf_template = "~/repo/moritz_mut_assignment/template_icgc_consensus.vcf"
-
-# samplename = "c4e048de-1d43-4fbd-8289-9279b16c8a3a"
-# cons_method = "sc3"
+# 
+# merge_clusters = F
+# filter_small_clusters = F
+# 
+# vcf_template = "~/repo/moritz_mut_assignment/template_icgc_consensus.vcf"
+# 
+# samplename = "55e520f4-0e4b-41a2-9951-c4e9f323100b"
+# cons_method = "wm"
 # clust_postfix = ".txt"
 # outdir = paste0("output_", cons_method, "/")
 # snv_vcf_file = paste0("../..//processed_data/consensusCalls/consensusCalls_2016_10_12/filtered/", samplename, ".consensus.20160830.somatic.snv_mnv.vcf.gz")
@@ -27,6 +28,10 @@ vcf_template = "~/repo/moritz_mut_assignment/template_icgc_consensus.vcf"
 # purity_file = "consensus.20170119.purity.ploidy.txt.gz"
 # summary_table = "summary_table_2_20170303.txt"
 # svclone_file = paste0("../../processed_data/sv_vafs_geoff/vafs/sv_vafs/", samplename, "_filtered_svs.tsv")
+# 
+# if (!file.exists(sv_vcf_file)) {
+#   sv_vcf_file = "NA"
+# }
 
 
 # mult_file = args[9]
@@ -126,7 +131,8 @@ sample_entry = get_summary_table_entry(samplename=samplename,
                                        cluster_info=snv_moritz$clusters_new, 
                                        snv_assignment_table=snv_moritz$plot_data, 
                                        indel_assignment_table=indel_moritz$plot_data, 
-                                       sv_assignment_table=sv_assignment_table)
+                                       sv_assignment_table=sv_assignment_table,
+                                       do_filter=filter_small_clusters)
 
 write.table(sample_entry, file.path(outdir, paste0(samplename, "_summary_table_entry.txt")), row.names=F, sep="\t", quote=F)
 

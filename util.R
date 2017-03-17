@@ -131,23 +131,26 @@ assign_moritz = function(MCN, clusters, purity) {
 # PCAWG11 Summary table
 ########################################################################
 
-get_clusters_entry = function(clusters, assignments_table, indel_assignments=NULL, sv_assignments=NULL, min_clonal_ccf=0.9, max_clonal_ccf=1.1) {
+get_clusters_entry = function(clusters, assignments_table, indel_assignments=NULL, sv_assignments=NULL, min_clonal_ccf=0.9, max_clonal_ccf=1.1, do_filter=T) {
   assignments = table(assignments_table$cluster)
   # if (!is.null(indel_assignments)) { indel_assignments = table(indel_assignments$cluster) }
   # if (!is.null(sv_assignments)) { sv_assignments = table(sv_assignments$cluster) }
   
-  total_muts = sum(assignments)
-  if (total_muts < 100) {
-    threshold = total_muts*FRAC_SNVS_CLUSTER
+  if (do_filter) {
+    total_muts = sum(assignments)
+    if (total_muts < 100) {
+      threshold = total_muts*FRAC_SNVS_CLUSTER
+    } else {
+      threshold = 30
+    }
+    
+    # kept_clusters = names(assignments)[assignments > (total_muts*FRAC_SNVS_CLUSTER) & assignments > MIN_NUM_SNVS_CLUSTER]
+    kept_clusters = names(assignments)[assignments > threshold]
+    superclones_to_merge = names(assignments)[clusters$location > max_clonal_ccf & clusters$no.of.mutations < total_muts*FRAC_SNVS_CLUSTER & rep(length(kept_clusters) > 1, length(kept_clusters))]
   } else {
-    threshold = 30
-  }
-  
-  # kept_clusters = names(assignments)[assignments > (total_muts*FRAC_SNVS_CLUSTER) & assignments > MIN_NUM_SNVS_CLUSTER]
-  kept_clusters = names(assignments)[assignments > threshold]
-  superclones_to_merge = names(assignments)[clusters$location > max_clonal_ccf & clusters$no.of.mutations < total_muts*FRAC_SNVS_CLUSTER & rep(length(kept_clusters) > 1, length(kept_clusters))]
-  
-  # kept_clusters = names(assignments)
+    kept_clusters = names(assignments)
+    superclones_to_merge = c()
+  }  
   
   # Count the number of subclones and SNVs assigned
   num_clonal = 0
@@ -216,7 +219,7 @@ FRAC_SNVS_CLUSTER = 0.01
 #' 
 #' @return 
 #' @author sd11
-get_summary_table_entry = function(samplename, summary_table, cluster_info, snv_assignment_table, indel_assignment_table=NULL, sv_assignment_table=NULL) {
+get_summary_table_entry = function(samplename, summary_table, cluster_info, snv_assignment_table, indel_assignment_table=NULL, sv_assignment_table=NULL, do_filter=T) {
   sample_entry = summary_table[summary_table$samplename==samplename, ,drop=F]
   # temp because using old summary table
   sample_entry$indel_clonal = 0
@@ -289,10 +292,14 @@ pcawg11_output = function(snv_moritz, indel_moritz, sv_moritz, MCN, MCN_indel, M
                         tumour_copynumber=MCN$D$MajCN+MCN$D$MinCN, 
                         multiplicity=MCN$D$MutCN, multiplicity_options=NA, probabilities=NA)
   
-  indel_mult = data.frame(chr=indel_assignments$chr, 
-                        pos=indel_assignments$pos, 
-                        tumour_copynumber=MCN_indel$D$MajCN+MCN_indel$D$MinCN, 
-                        multiplicity=MCN_indel$D$MutCN, multiplicity_options=NA, probabilities=NA)
+  if (nrow(indel_assignments) > 0) {
+    indel_mult = data.frame(chr=indel_assignments$chr, 
+                          pos=indel_assignments$pos, 
+                          tumour_copynumber=MCN_indel$D$MajCN+MCN_indel$D$MinCN, 
+                          multiplicity=MCN_indel$D$MutCN, multiplicity_options=NA, probabilities=NA)
+  } else {
+    indel_mult = NULL
+  }
   
   if (!is.null(vcf_sv)) {
     sv_mult = data.frame(chr=sv_assignments$chr, 
