@@ -12,7 +12,7 @@ summary_table = args[9]
 svclone_file = args[10]
 
 merge_clusters = F
-filter_small_clusters = F
+filter_small_clusters = F # only for summary table entry
 
 vcf_template = "~/repo/moritz_mut_assignment/template_icgc_consensus.vcf"
 
@@ -56,6 +56,10 @@ library(grid)
 ########################################################################
 bb <- loadBB(bb_file)
 clusters = read.table(clust_file, header=TRUE, sep="\t")
+
+# sort the clusters and renumber
+clusters = clusters[with(clusters, order(proportion)),]
+clusters$cluster = 1:nrow(clusters)
 
 vcf_snv <- readVcf(snv_vcf_file, genome="GRCh37")
 vcf_indel <- readVcf(indel_vcf_file, genome="GRCh37")
