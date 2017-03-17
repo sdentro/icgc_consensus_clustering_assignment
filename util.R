@@ -81,7 +81,7 @@ getClustLL = function(data, cluster_locations, purity) {
     mutBurdens = mutationCopyNumberToMutationBurden(cluster_locations[c] * data$MutCN, data$MajCN+data$MinCN, purity, rep(2, nrow(data)))
     data$altCount*log(mutBurdens) + data$wtCount*log(1-mutBurdens)
   })
-  return(assignment_ll)
+  return(matrix(assignment_ll, ncol=length(cluster_locations)))
 }
 
 #' Assign mutations to the cluster with highest binomial likelihood
