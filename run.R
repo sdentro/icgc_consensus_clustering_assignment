@@ -10,12 +10,12 @@ clust_file = args[7]
 purity_file = args[8]
 summary_table = args[9]
 svclone_file = args[10]
-# 
-# merge_clusters = F
-# filter_small_clusters = F
-# 
-# vcf_template = "~/repo/moritz_mut_assignment/template_icgc_consensus.vcf"
-# 
+
+merge_clusters = F
+filter_small_clusters = F
+
+vcf_template = "~/repo/moritz_mut_assignment/template_icgc_consensus.vcf"
+
 # samplename = "55e520f4-0e4b-41a2-9951-c4e9f323100b"
 # cons_method = "wm"
 # clust_postfix = ".txt"
