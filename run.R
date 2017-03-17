@@ -15,15 +15,18 @@ merge_clusters = F
 
 vcf_template = "~/repo/moritz_mut_assignment/template_icgc_consensus.vcf"
 
-# samplename = "040b1b6-b07a-4b6e-90ef-133523eaf412"
-# outdir = "output_cicc/" 
-# snv_vcf_file = "../..//processed_data/consensusCalls/consensusCalls_2016_10_12/filtered/0040b1b6-b07a-4b6e-90ef-133523eaf412.consensus.20160830.somatic.snv_mnv.vcf.gz"
-# indel_vcf_file = "../..//processed_data/consensusCalls/consensusCalls_2016_10_12/indel/0040b1b6-b07a-4b6e-90ef-133523eaf412.consensus.20161006.somatic.indel.vcf.gz"
-# bb_file = "../../processed_data/copynumberConsensus/final_consensus_20170119/working_group_output_full_profile/0040b1b6-b07a-4b6e-90ef-133523eaf412_segments.txt.gz"
-# clust_file = "consensus_clusters_cicc/0040b1b6-b07a-4b6e-90ef-133523eaf412_subclonal_structure.txt.gz"
+# samplename = "c4e048de-1d43-4fbd-8289-9279b16c8a3a"
+# cons_method = "sc3"
+# clust_postfix = ".txt"
+# outdir = paste0("output_", cons_method, "/")
+# snv_vcf_file = paste0("../..//processed_data/consensusCalls/consensusCalls_2016_10_12/filtered/", samplename, ".consensus.20160830.somatic.snv_mnv.vcf.gz")
+# indel_vcf_file = paste0("../..//processed_data/consensusCalls/consensusCalls_2016_10_12/indel/", samplename, ".consensus.20161006.somatic.indel.vcf.gz")
+# sv_vcf_file = paste0("../../processed_data/consensusSVs/pcawg_consensus_1.5.160912/", samplename, ".pcawg_consensus_1.5.160912.somatic.sv.vcf.gz")
+# bb_file = paste0("../../processed_data/copynumberConsensus/final_consensus_20170119/working_group_output_full_profile/", samplename, "_segments.txt.gz")
+# clust_file = paste0("consensus_clusters_", cons_method, "/", samplename, "_subclonal_structure", clust_postfix)
 # purity_file = "consensus.20170119.purity.ploidy.txt.gz"
 # summary_table = "summary_table_2_20170303.txt"
-# svclone_file = "../../processed_data/sv_vafs_geoff/vafs/sv_vafs/0040b1b6-b07a-4b6e-90ef-133523eaf412_filtered_svs.tsv"
+# svclone_file = paste0("../../processed_data/sv_vafs_geoff/vafs/sv_vafs/", samplename, "_filtered_svs.tsv")
 
 
 # mult_file = args[9]
@@ -213,11 +216,16 @@ p3 = p3 + scale_fill_hue(labels = rev(paste0(" ",
                                            round(snv_moritz$clusters$ccf, 2), "  ", 
                                            snv_moritz$clusters$n_ssms, "  ")))
 
-p4 = base_plot(indel_moritz$plot_data, "ccf", "Consensus closest cluster assignment") + xlim(0, 1.5) + geom_vline(data=clusters, mapping=aes(xintercept=ccf)) + xlab("ccf - indel")
-p4 = p4 + scale_fill_hue(labels = rev(paste0(" ", 
-                                           indel_binom$clusters$cluster, " : ", 
-                                           round(indel_moritz$clusters$ccf, 2), "  ", 
-                                           indel_moritz$clusters$n_ssms, "  ")))
+if (any(indel_moritz$plot_data$ccf < 1.5)) {
+  p4 = base_plot(indel_moritz$plot_data, "ccf", "Consensus closest cluster assignment") + xlim(0, 1.5) + geom_vline(data=clusters, mapping=aes(xintercept=ccf)) + xlab("ccf - indel")
+  p4 = p4 + scale_fill_hue(labels = rev(paste0(" ", 
+                                             indel_binom$clusters$cluster, " : ", 
+                                             round(indel_moritz$clusters$ccf, 2), "  ", 
+                                             indel_moritz$clusters$n_ssms, "  ")))
+} else {
+  p4 = make_dummy_figure()
+}
+
 if (!is.null(vcf_sv)) {
   p5 = base_plot(sv_moritz$plot_data, "ccf", "Consensus closest cluster assignment") + xlim(0, 1.5) + geom_vline(data=clusters, mapping=aes(xintercept=ccf)) + xlab("ccf - sv")
   p5 = p5 + scale_fill_hue(labels = rev(paste0(" ", 
@@ -228,7 +236,7 @@ if (!is.null(vcf_sv)) {
   p5 = make_dummy_figure()
 }
 
-if (!is.null(vcf_sv)) {
+if (!is.null(vcf_sv) & any(sv_moritz$plot_data$ccf < 1.5)) {
   all_data = do.call(rbind, list(snv_binom$plot_data, indel_binom$plot_data, sv_binom$plot_data))
   all_data$type = factor(c(rep("SNV", nrow(snv_binom$plot_data)), rep("indel", nrow(indel_binom$plot_data)), rep("sv", nrow(sv_binom$plot_data))), levels=c("SNV", "indel", "sv"))
 } else {
