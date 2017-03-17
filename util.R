@@ -96,7 +96,7 @@ assign_binom_ll = function(MCN, clusters, purity) {
   clust_assign_ll = getClustLL(MCN$D, clusters$proportion/purity, purity)
   best_cluster = unlist(apply(clust_assign_ll, 1, function(x) if (all(is.na(x))) NA else which.max(x)))
   
-  cluster_counts = table(best_cluster)
+  cluster_counts = table(factor(best_cluster, levels=clusters$cluster))
   clusters_new = data.frame(clusters$cluster, sapply(clusters$cluster, function(x) cluster_counts[[as.character(x)]]), clusters$proportion, clusters$ccf)
   colnames(clusters_new) = colnames(clusters)
   
