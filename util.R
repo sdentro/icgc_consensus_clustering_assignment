@@ -317,7 +317,7 @@ pcawg11_output = function(snv_moritz, indel_moritz, sv_moritz, MCN, MCN_indel, M
     if (n_subclones==1) {
       r = t(t(sapply(MCN$D$pAllSubclones, function(x) if(length(x)!=0) x else rep(NA, n_subclones))))
     } else {
-      r = sapply(MCN$D$pAllSubclones, function(x) if(length(x)!=0) x else rep(NA, n_subclones))
+      r = t(sapply(MCN$D$pAllSubclones, function(x) if(length(x)!=0) x else rep(NA, n_subclones)))
     }
     snv_assignments_prob = data.frame(chr=as.character(seqnames(vcf_snv)), 
                                       pos=as.numeric(start(vcf_snv)), 
