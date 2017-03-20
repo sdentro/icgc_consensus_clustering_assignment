@@ -72,6 +72,7 @@ if (svclone_file=="NA") {
 purityPloidy <- read.table(purity_file, header=TRUE, sep="\t")
 purity = purityPloidy$purity[purityPloidy$samplename==samplename]
 ploidy = purityPloidy$ploidy[purityPloidy$samplename==samplename]
+bb$clonal_frequency = purity
 
 summary_table = read.table(summary_table, header=T, stringsAsFactors=F)
 sex = summary_table$inferred_sex[summary_table$samplename==samplename]
