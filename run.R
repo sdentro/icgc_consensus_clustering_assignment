@@ -61,7 +61,7 @@ bb <- loadBB(bb_file)
 clusters = read.table(clust_file, header=TRUE, sep="\t")
 
 # sort the clusters and renumber
-clusters = clusters[with(clusters, order(proportion)),]
+clusters = clusters[with(clusters, order(proportion, decreasing=T)),]
 clusters$cluster = 1:nrow(clusters)
 
 vcf_snv <- readVcf(snv_vcf_file, genome="GRCh37")
