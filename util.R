@@ -342,7 +342,7 @@ pcawg11_output = function(snv_moritz, indel_moritz, sv_moritz, MCN, MCN_indel, M
     # Obtain probabilities - SV
     sv_assignments_prob = get_probs(final_clusters, MCN_sv, vcf_sv)
   } else {
-    sv_assignments_prob
+    sv_assignments_prob = NULL
   }
   
   return(list(final_clusters=final_clusters, 
