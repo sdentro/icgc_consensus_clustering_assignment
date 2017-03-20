@@ -51,6 +51,9 @@ library(ggplot2)
 library(gridExtra)
 library(grid)
 
+# Overdispersion parameter
+rho = 0.01
+
 ########################################################################
 # Parse the input
 ########################################################################
@@ -98,10 +101,10 @@ clusters$ccf = clusters$proportion/purity
 # Assignments
 ########################################################################
 #' Assign using Moritz' approach
-MCN <- computeMutCn(vcf_snv, bb, clusters, purity, gender=sex, isWgd=is_wgd)
-MCN_indel <- computeMutCn(vcf_indel, bb, clusters, purity, gender=sex, isWgd=is_wgd)
+MCN <- computeMutCn(vcf_snv, bb, clusters, purity, gender=sex, isWgd=is_wgd, rho=rho)
+MCN_indel <- computeMutCn(vcf_indel, bb, clusters, purity, gender=sex, isWgd=is_wgd, rho=rho)
 if (!is.null(vcf_sv)) {
-  MCN_sv <- computeMutCn(vcf_sv, bb, clusters, purity, gender=sex, isWgd=is_wgd)
+  MCN_sv <- computeMutCn(vcf_sv, bb, clusters, purity, gender=sex, isWgd=is_wgd, rho=rho)
 }
 
 ########################################################################
