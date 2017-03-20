@@ -311,13 +311,55 @@ pcawg11_output = function(snv_moritz, indel_moritz, sv_moritz, MCN, MCN_indel, M
   } else {
     sv_mult = NULL
   }
+  
+  # Obtain probabilities - SNV
+  n_subclones = nrow(final_clusters)-1
+  r = t(t(sapply(MCN$D$pAllSubclones, function(x) if(length(x)!=0) x else rep(NA, n_subclones))))
+  snv_assignments_prob = data.frame(chr=as.character(seqnames(vcf_snv)), 
+                                    pos=as.numeric(start(vcf_snv)), 
+                                    clone=1-rowSums(r), 
+                                    r)
+  # set cluster number in the header
+  colnames(snv_assignments_prob) = c("chr", "pos", paste0("cluster_", final_clusters$cluster))
+  
+  if (nrow(indel_assignments) > 0) {
+    # Obtain probabilities - indel
+    n_subclones = nrow(final_clusters)-1
+    r = t(t(sapply(MCN_indel$D$pAllSubclones, function(x) if(length(x)!=0) x else rep(NA, n_subclones))))
+    indel_assignments_prob = data.frame(chr=indel_assignments$chr, 
+                                        pos=indel_assignments$pos,
+                                        clone=1-rowSums(r), 
+                                        r)
+    # set cluster number in the header
+    colnames(indel_assignments_prob) = paste0("cluster_", final_clusters$cluster)
+  } else {
+    indel_assignments_prob = NULL
+  }
+  
+  if (!is.null(vcf_sv)) {
+    # Obtain probabilities - SV
+    n_subclones = nrow(final_clusters)-1
+    r = t(t(sapply(MCN_sv$D$pAllSubclones, function(x) if(length(x)!=0) x else rep(NA, n_subclones))))
+    sv_assignments_prob = data.frame(chr=sv_assignments$chr, 
+                                     pos=sv_assignments$pos, 
+                                     clone=1-rowSums(r), 
+                                     r)
+    # set cluster number in the header
+    colnames(sv_assignments_prob) = paste0("cluster_", final_clusters$cluster)
+  } else {
+    sv_assignments_prob
+  }
+  
   return(list(final_clusters=final_clusters, 
               snv_assignments=snv_assignments, 
               indel_assignments=indel_assignments,
               sv_assignments=sv_assignments,
               snv_mult=snv_mult,
               indel_mult=indel_mult,
-              sv_mult=sv_mult))
+              sv_mult=sv_mult,
+              snv_assignments_prob=snv_assignments_prob,
+              indel_assignments_prob=indel_assignments_prob,
+              sv_assignments_prob=sv_assignments_prob))
 }
 
 ########################################################################
