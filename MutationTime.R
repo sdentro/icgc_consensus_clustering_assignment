@@ -1,6 +1,6 @@
 #' # Calculation of mutation copy numbers and timing parameters
 #' Minimal example
-#' source("/Users/mg14/Projects/PCAWG-11/code/MutationTime.R")
+#' source("/Users/mg14/Projects/PCAWG-11/code/ComputeMCN.R")
 #' vcf <- readVcf("final/final_consensus_12oct_passonly/snv_mnv/0040b1b6-b07a-4b6e-90ef-133523eaf412.consensus.20160830.somatic.snv_mnv.vcf.gz",genome="GRCh37")
 #' bb <- loadBB("dp/20161213_vanloo_wedge_consSNV_prelimConsCNAallStar/4_copynumber/0040b1b6-b07a-4b6e-90ef-133523eaf412_segments.txt.gz")
 #' clusters = read.table("dp/20161213_vanloo_wedge_consSNV_prelimConsCNAallStar/2_subclones/0040b1b6-b07a-4b6e-90ef-133523eaf412_subclonal_structure.txt.gz", header=TRUE, sep="\t")
@@ -265,7 +265,7 @@ defineMcnStates <- function(bb, clusters, purity, gender='female', isWgd= FALSE)
 #' @export
 computeMutCn <- function(vcf, bb, clusters, purity, gender='female', isWgd= FALSE, xmin=3, rho=0, n.boot=200){
 	n <- nrow(vcf)
-	D <- DataFrame(MutCN=rep(NA,n), MutDeltaCN=rep(NA,n), MajCN=rep(NA,n), MinCN=rep(NA,n), MajDerCN=rep(NA,n), MinDerCN=rep(NA,n), CNF=rep(NA,n), CNID =as(vector("list", n),"List"), pMutCN=rep(NA,n), pGain=rep(NA,n),pSingle=rep(NA,n),pSub=rep(NA,n), pMutCNTail=rep(NA,n))	
+	D <- DataFrame(MutCN=rep(NA,n), MutDeltaCN=rep(NA,n), MajCN=rep(NA,n), MinCN=rep(NA,n), MajDerCN=rep(NA,n), MinDerCN=rep(NA,n), CNF=rep(NA,n), CNID =as(vector("list", n),"List"), pMutCN=rep(NA,n), pGain=rep(NA,n),pSingle=rep(NA,n), pSub=rep(NA,n), pAllSubclones = as(vector(mode="list",n),"List"), pMutCNTail=rep(NA,n))	
 	P <- defineMcnStates(bb,clusters, purity, gender, isWgd)
 	if(n==0)
 		return(list(D=D, P=P))
@@ -422,6 +422,8 @@ computeMutCn <- function(vcf, bb, clusters, purity, gender='female', isWgd= FALS
 				#D[hh, "pSingle"] <- rowSums(P.sm.x[, cnStates[1:k,"state"] %in% which(clonalFlag) & cnStates[1:k,"m"]<=1, drop=FALSE])
 				D[hh, "pSingle"] <-  1 - D[hh, "pSub"] - D[hh, "pGain"]			
 				
+				D[hh, "pAllSubclones"] <- as(DataFrame(t(P.sm.x[, !cnStates[,"clonalFlag"], drop=FALSE])),"List")
+				
 				D[hh,"MutCN"]  <- cnStates[w,"m"]
 				D[hh,"MutDeltaCN"]  <- cnStates[w,"majDelta"] + cnStates[w,"minDelta"]
 				D[hh,"MinCN"] <- cnStates[w,"minCNanc"]
@@ -432,8 +434,6 @@ computeMutCn <- function(vcf, bb, clusters, purity, gender='female', isWgd= FALS
 				D[hh,"CNF"]  <- cnStates[w,"cfi"]
 				D[hh,"pMutCN"] <- sapply(seq_along(w), function(i) P.sm.x[i,w[i]])
 				D[hh,"pMutCNTail"] <- sapply(seq_along(w), function(i) pMutCNTail[i,w[i]])
-				D[hh,"altCount"] <- altCount[hh]
-				D[hh,"wtCount"] <- tumDepth[hh] - altCount[hh]
 			}		
 		}		
 		if(any(is.na(power.c) | power.c==0)) break # Cancel 2nd iteration 
@@ -458,23 +458,21 @@ classifyMutations <- function(x, reclassify=c("missing","all","none")) {
 	reclassify <- match.arg(reclassify)
 	if(nrow(x) ==0 )
 		return(factor(NULL, levels=c("clonal [early]", "clonal [late]", "clonal [NA]", "subclonal")))
-	
 	if(class(x)=="CollapsedVCF")
-	  x <- info(x)
-	
+	x <- info(x)
 	.clsfy <- function(x) {
 		cls <- x$CLS
-		if(reclassify %in% c("missing", "none") &! is.null(cls)) {
+		if(reclassify %in% c("missing", "none") &! is.null(cls)){
 			if(all(unique(cls) %in% c("early", "late", "clonal", "subclonal")))
 				cls <- factor(cls, levels=c("early", "late", "clonal", "subclonal"), labels=c("clonal [early]", "clonal [late]", "clonal [NA]", "subclonal"))
 			cls <- as.character(cls)
 			cls[cls=="NA"] <- NA
 			if(reclassify=="missing" & any(is.na(cls)))
 				cls[is.na(cls)] <- paste(factor(apply(as.matrix(x[is.na(cls), c("pGain","pSingle","pSub")]), 1, function(x) if(all(is.na(x))) NA else which.max(x)), levels=1:3, labels=c("clonal [early]", "clonal [late]","subclonal"))) ## reclassify missing
-	  } else {
-		  cls <- paste(factor(apply(as.matrix(x[, c("pGain","pSingle","pSub")]), 1, function(x) if(all(is.na(x))) NA else which.max(x)), levels=1:3, labels=c("clonal [early]", "clonal [late]","subclonal"))) ## reclassify missing
+		}else{
+			cls <- paste(factor(apply(as.matrix(x[, c("pGain","pSingle","pSub")]), 1, function(x) if(all(is.na(x))) NA else which.max(x)), levels=1:3, labels=c("clonal [early]", "clonal [late]","subclonal"))) ## reclassify missing
 			
-	  }
+		}
 		cls[x$pGain==0 & cls!="subclonal"] <- "clonal [NA]"
 		if(!is.null(x$MajCN))
 			cls[cls!="subclonal" & (x$MajCN == 1 | x$MinCN == 1) & abs(x$MutCN - x$MutDeltaCN -1) <= 0.0001] <- "clonal [NA]"
