@@ -434,6 +434,8 @@ computeMutCn <- function(vcf, bb, clusters, purity, gender='female', isWgd= FALS
 				D[hh,"CNF"]  <- cnStates[w,"cfi"]
 				D[hh,"pMutCN"] <- sapply(seq_along(w), function(i) P.sm.x[i,w[i]])
 				D[hh,"pMutCNTail"] <- sapply(seq_along(w), function(i) pMutCNTail[i,w[i]])
+				D[hh,"altCount"] <- altCount[hh]
+				D[hh,"wtCount"] <- tumDepth[hh] - altCount[hh]
 			}		
 		}		
 		if(any(is.na(power.c) | power.c==0)) break # Cancel 2nd iteration 
