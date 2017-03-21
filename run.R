@@ -13,6 +13,7 @@ svclone_file = args[10]
 
 merge_clusters = F
 filter_small_clusters = F # only for summary table entry
+deltaFreq <- 0.00 # merge clusters withing deltaFreq
 
 vcf_template = "~/repo/moritz_mut_assignment/template_icgc_consensus.vcf"
 
@@ -101,10 +102,10 @@ clusters$ccf = clusters$proportion/purity
 # Assignments
 ########################################################################
 #' Assign using Moritz' approach
-MCN <- computeMutCn(vcf_snv, bb, clusters, purity, gender=sex, isWgd=is_wgd, rho=rho)
-MCN_indel <- computeMutCn(vcf_indel, bb, clusters, purity, gender=sex, isWgd=is_wgd, rho=rho)
+MCN <- computeMutCn(vcf_snv, bb, clusters, purity, gender=sex, isWgd=is_wgd, rho=rho, deltaFreq=deltaFreq)
+MCN_indel <- computeMutCn(vcf_indel, bb, clusters, purity, gender=sex, isWgd=is_wgd, rho=rho, deltaFreq=deltaFreq)
 if (!is.null(vcf_sv)) {
-  MCN_sv <- computeMutCn(vcf_sv, bb, clusters, purity, gender=sex, isWgd=is_wgd, rho=rho)
+  MCN_sv <- computeMutCn(vcf_sv, bb, clusters, purity, gender=sex, isWgd=is_wgd, rho=rho, deltaFreq=deltaFreq)
 }
 
 ########################################################################

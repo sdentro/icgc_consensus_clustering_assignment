@@ -111,7 +111,7 @@ mergeClusters <- function(clusters, deltaFreq=0.05){
 #' 
 #' @author mg14
 #' @export
-defineMcnStates <- function(bb, clusters, purity, gender='female', isWgd= FALSE){
+defineMcnStates <- function(bb, clusters, purity, gender='female', isWgd= FALSE, deltaFreq=0.05){
 	P <- vector(mode='list', length(bb))
 	uniqueBB <- unique(bb)
 	overlaps <- findOverlaps(uniqueBB, bb)
@@ -135,7 +135,7 @@ defineMcnStates <- function(bb, clusters, purity, gender='female', isWgd= FALSE)
 	
 	power.c <- rep(0, nrow(clusters))
 	
-	deltaFreq <- 0.05 # merge clusters withing deltaFreq
+	# deltaFreq <- 0.00 # merge clusters withing deltaFreq
 	
 	
 	for( i in seq_along(uniqueBB)){
@@ -263,10 +263,10 @@ defineMcnStates <- function(bb, clusters, purity, gender='female', isWgd= FALSE)
 #' 
 #' @author mg14
 #' @export
-computeMutCn <- function(vcf, bb, clusters, purity, gender='female', isWgd= FALSE, xmin=3, rho=0, n.boot=200){
+computeMutCn <- function(vcf, bb, clusters, purity, gender='female', isWgd= FALSE, xmin=3, rho=0, n.boot=200, deltaFreq=0.05){
 	n <- nrow(vcf)
 	D <- DataFrame(MutCN=rep(NA,n), MutDeltaCN=rep(NA,n), MajCN=rep(NA,n), MinCN=rep(NA,n), MajDerCN=rep(NA,n), MinDerCN=rep(NA,n), CNF=rep(NA,n), CNID =as(vector("list", n),"List"), pMutCN=rep(NA,n), pGain=rep(NA,n),pSingle=rep(NA,n), pSub=rep(NA,n), pAllSubclones = as(vector(mode="list",n),"List"), pMutCNTail=rep(NA,n))	
-	P <- defineMcnStates(bb,clusters, purity, gender, isWgd)
+	P <- defineMcnStates(bb,clusters, purity, gender, isWgd, deltaFreq=deltaFreq)
 	if(n==0)
 		return(list(D=D, P=P))
 	
@@ -294,7 +294,7 @@ computeMutCn <- function(vcf, bb, clusters, purity, gender='female', isWgd= FALS
 	
 	power.c <- rep(0, nrow(clusters))
 	
-	deltaFreq <- 0.05 # merge clusters withing deltaFreq
+	# deltaFreq <- 0.05 # merge clusters withing deltaFreq
 	
 	boundaryHits <- countOverlaps(vcf, unique(bb)) > 1 # indels overlapping with CN boundaries
 	
