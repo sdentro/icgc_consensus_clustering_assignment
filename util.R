@@ -354,21 +354,21 @@ pcawg11_output = function(snv_moritz, indel_moritz, sv_moritz, MCN, MCN_indel, M
   
   
   # iterate over all svs and replace
-  for (i in 1:nrow(final_pcawg11_output$sv_assignments)) {
-    if (any(final_pcawg11_output$sv_assignments$pos[i] == svmap$pos1)) {
-      hit = which(final_pcawg11_output$sv_assignments$pos[i] == svmap$pos1)
+  for (i in 1:nrow(sv_assignments)) {
+    if (any(sv_assignments$pos[i] == svmap$pos1)) {
+      hit = which(sv_assignments$pos[i] == svmap$pos1)
     } else {
-      hit = which(final_pcawg11_output$sv_assignments$pos[i] == svmap$pos2)
+      hit = which(sv_assignments$pos[i] == svmap$pos2)
     }
     
     svid = svmap$original_id[hit]
     # now have mapped i onto all_sv_data_row
     all_sv_data_row = which(all_sv_data$id == svid)
-    all_sv_data$cluster[all_sv_data_row] = final_pcawg11_output$sv_assignments$cluster[i]
+    all_sv_data$cluster[all_sv_data_row] = sv_assignments$cluster[i]
     
     # do the same with probs
     
-    all_sv_data_probs[all_sv_data_row, grepl("cluster", colnames(all_sv_data_probs))] = final_pcawg11_output$sv_assignments_prob[i, grepl("cluster", colnames(final_pcawg11_output$sv_assignments_prob))]
+    all_sv_data_probs[all_sv_data_row, grepl("cluster", colnames(all_sv_data_probs))] = sv_assignments_prob[i, grepl("cluster", colnames(sv_assignments_prob))]
   }
   
   if (!is.null(vcf_sv)) {
@@ -433,7 +433,7 @@ remap_svs = function(consensus_vcf_file, svid_map_file, sv_assignments, sv_assig
     all_sv_data_row = which(all_sv_data$id == svid)
     # now have mapped i onto all_sv_data_row, save the assignments into the all_data tables
     
-    all_sv_data$cluster[all_sv_data_row] = final_pcawg11_output$sv_assignments$cluster[i]
+    all_sv_data$cluster[all_sv_data_row] = sv_assignments$cluster[i]
     all_sv_data_probs[all_sv_data_row, grepl("cluster", colnames(all_sv_data_probs))] = sv_assignments_prob[i, grepl("cluster", colnames(sv_assignments_prob))]
   }
   return(list(all_sv_data=all_sv_data, all_sv_data_probs=all_sv_data_probs))
