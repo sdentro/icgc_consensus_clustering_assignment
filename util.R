@@ -371,10 +371,12 @@ pcawg11_output = function(snv_moritz, indel_moritz, sv_moritz, MCN, MCN_indel, M
     all_sv_data_probs[all_sv_data_row, grepl("cluster", colnames(all_sv_data_probs))] = final_pcawg11_output$sv_assignments_prob[i, grepl("cluster", colnames(final_pcawg11_output$sv_assignments_prob))]
   }
   
-  # Remap SVs into their correct position
-  res = remap_svs(consensus_vcf_file, svid_map_file, sv_assignments, sv_assignments_prob)
-  sv_assignments = res$sv_assignments
-  sv_assignments_prob = res$sv_assignments_prob
+  if (!is.null(vcf_sv)) {
+    # Remap SVs into their correct position
+    res = remap_svs(consensus_vcf_file, svid_map_file, sv_assignments, sv_assignments_prob)
+    sv_assignments = res$sv_assignments
+    sv_assignments_prob = res$sv_assignments_prob
+  }
   
   return(list(final_clusters=final_clusters, 
               snv_assignments=snv_assignments, 
