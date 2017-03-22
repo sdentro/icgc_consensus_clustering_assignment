@@ -408,7 +408,7 @@ remap_svs = function(consensus_vcf_file, svid_map_file, sv_assignments, sv_assig
     for (split in splits) {
       x <- unlist(strsplit(x, split, ...))
     }
-    return(x[!x == "" & sapply(x, function(y) !any(sapply(c("A", "C", "G", "T"), grepl, y)))]) # Remove empty values
+    return(x[!x == "" & sapply(x, function(y) !any(sapply(c("A", "C", "G", "T", "N"), grepl, y)))]) # Remove empty values
   }
   
   r = lapply(fixed(cons_sv)$ALT, function(x) strsplits(x, c("\\[", "\\]", ":", fixed=T)))
