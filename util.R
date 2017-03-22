@@ -353,23 +353,24 @@ pcawg11_output = function(snv_moritz, indel_moritz, sv_moritz, MCN, MCN_indel, M
   }
   
   
-  # iterate over all svs and replace
-  for (i in 1:nrow(sv_assignments)) {
-    if (any(sv_assignments$pos[i] == svmap$pos1)) {
-      hit = which(sv_assignments$pos[i] == svmap$pos1)
-    } else {
-      hit = which(sv_assignments$pos[i] == svmap$pos2)
-    }
-    
-    svid = svmap$original_id[hit]
-    # now have mapped i onto all_sv_data_row
-    all_sv_data_row = which(all_sv_data$id == svid)
-    all_sv_data$cluster[all_sv_data_row] = sv_assignments$cluster[i]
-    
-    # do the same with probs
-    
-    all_sv_data_probs[all_sv_data_row, grepl("cluster", colnames(all_sv_data_probs))] = sv_assignments_prob[i, grepl("cluster", colnames(sv_assignments_prob))]
-  }
+  # # iterate over all svs and replace
+  # svmap = read.table(svid_map_file, header=T, stringsAsFactors=F)
+  # for (i in 1:nrow(sv_assignments)) {
+  #   if (any(sv_assignments$pos[i] == svmap$pos1)) {
+  #     hit = which(sv_assignments$pos[i] == svmap$pos1)
+  #   } else {
+  #     hit = which(sv_assignments$pos[i] == svmap$pos2)
+  #   }
+  #   
+  #   svid = svmap$original_id[hit]
+  #   # now have mapped i onto all_sv_data_row
+  #   all_sv_data_row = which(all_sv_data$id == svid)
+  #   all_sv_data$cluster[all_sv_data_row] = sv_assignments$cluster[i]
+  #   
+  #   # do the same with probs
+  #   
+  #   all_sv_data_probs[all_sv_data_row, grepl("cluster", colnames(all_sv_data_probs))] = sv_assignments_prob[i, grepl("cluster", colnames(sv_assignments_prob))]
+  # }
   
   if (!is.null(vcf_sv)) {
     # Remap SVs into their correct position
@@ -395,10 +396,10 @@ pcawg11_output = function(snv_moritz, indel_moritz, sv_moritz, MCN, MCN_indel, M
 #' @param svid_map_file
 #' @param sv_assignments
 #' @param sv_assignments_prob
-#' @return Two data.frames, one with hard assignments and one with probabilities. Every consensus SV is reported with their consensus location
+#' @return A list with two data.frames, one with hard assignments and one with probabilities. Every consensus SV is reported with their consensus location
 remap_svs = function(consensus_vcf_file, svid_map_file, sv_assignments, sv_assignments_prob) {
   #"../../processed_data/consensusSVs/pcawg_consensus_1.5.160912/1e27cc8a-5394-4958-9af6-5ece1fe24516.pcawg_consensus_1.5.160912.somatic.sv.vcf.gz"
-  cons_sv = readVcf(consensus_vcf_file, "hg19")
+  cons_sv = readVcf(consensus_vcf_file, "GRCh37")
   #"../../processed_data/sv_vafs_geoff/final_v2/svclone_loc_vcfid_map/1e27cc8a-5394-4958-9af6-5ece1fe24516_svin.txt"
   svmap = read.table(svid_map_file, header=T, stringsAsFactors=F)
   
@@ -436,7 +437,7 @@ remap_svs = function(consensus_vcf_file, svid_map_file, sv_assignments, sv_assig
     all_sv_data$cluster[all_sv_data_row] = sv_assignments$cluster[i]
     all_sv_data_probs[all_sv_data_row, grepl("cluster", colnames(all_sv_data_probs))] = sv_assignments_prob[i, grepl("cluster", colnames(sv_assignments_prob))]
   }
-  return(list(all_sv_data=all_sv_data, all_sv_data_probs=all_sv_data_probs))
+  return(list(sv_assignments=all_sv_data, sv_assignments_prob=all_sv_data_probs))
 }
 
 ########################################################################
