@@ -10,6 +10,7 @@ clust_file = args[7]
 purity_file = args[8]
 summary_table = args[9]
 svclone_file = args[10]
+svid_map_file = args[11]
 
 merge_clusters = F
 filter_small_clusters = F # only for summary table entry
@@ -102,10 +103,10 @@ clusters$ccf = clusters$proportion/purity
 # Assignments
 ########################################################################
 #' Assign using Moritz' approach
-MCN <- computeMutCn(vcf_snv, bb, clusters, purity, gender=sex, isWgd=is_wgd, rho=rho, deltaFreq=deltaFreq)
-MCN_indel <- computeMutCn(vcf_indel, bb, clusters, purity, gender=sex, isWgd=is_wgd, rho=rho, deltaFreq=deltaFreq)
+MCN <- computeMutCn(vcf_snv, bb, clusters, purity, gender=sex, isWgd=is_wgd, rho=rho, deltaFreq=deltaFreq, n.boot=0)
+MCN_indel <- computeMutCn(vcf_indel, bb, clusters, purity, gender=sex, isWgd=is_wgd, rho=rho, deltaFreq=deltaFreq, n.boot=0)
 if (!is.null(vcf_sv)) {
-  MCN_sv <- computeMutCn(vcf_sv, bb, clusters, purity, gender=sex, isWgd=is_wgd, rho=rho, deltaFreq=deltaFreq)
+  MCN_sv <- computeMutCn(vcf_sv, bb, clusters, purity, gender=sex, isWgd=is_wgd, rho=rho, deltaFreq=deltaFreq, n.boot=0)
 }
 
 ########################################################################
@@ -212,7 +213,7 @@ ccfs$ccf = round(ccfs$ccf, 4)
 # TODO disabled for now
 # write.table(timing, file.path(outdir, paste0(samplename, "_timing_snv_indel_sv.txt")), row.names=F, sep="\t", quote=F)
 # write.table(ccfs, file.path(outdir, paste0(samplename, "_ccfs_snv_indel_sv.txt")), row.names=F, sep="\t", quote=F)
-final_pcawg11_output = pcawg11_output(snv_moritz, indel_moritz, sv_moritz, MCN, MCN_indel, MCN_sv, vcf_sv)
+final_pcawg11_output = pcawg11_output(snv_moritz, indel_moritz, sv_moritz, MCN, MCN_indel, MCN_sv, vcf_sv, sv_vcf_file, svid_map_file)
 save(final_pcawg11_output, timing, ccfs, file=file.path(outdir, paste0(samplename, "_pcawg11_output.RData")))
 
 ########################################################################

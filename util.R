@@ -258,7 +258,7 @@ get_summary_table_entry = function(samplename, summary_table, cluster_info, snv_
 # PCAWG11 Calibration format
 ########################################################################
 
-pcawg11_output = function(snv_moritz, indel_moritz, sv_moritz, MCN, MCN_indel, MCN_sv, vcf_sv) {
+pcawg11_output = function(snv_moritz, indel_moritz, sv_moritz, MCN, MCN_indel, MCN_sv, vcf_sv, consensus_vcf_file, svid_map_file) {
   # Cluster locations
   final_clusters = snv_moritz$clusters
   final_clusters$n_indels = indel_moritz$clusters$n_ssms
@@ -272,16 +272,16 @@ pcawg11_output = function(snv_moritz, indel_moritz, sv_moritz, MCN, MCN_indel, M
   snv_assignments = data.frame(chr=as.character(seqnames(vcf_snv)), pos=as.numeric(start(vcf_snv)), cluster=snv_moritz$plot_data$cluster)
   indel_assignments = data.frame(chr=as.character(seqnames(vcf_indel)), pos=as.numeric(start(vcf_indel)), cluster=indel_moritz$plot_data$cluster)
   if (!is.null(vcf_sv)) {
-    nclusters = nrow(final_clusters)
-    nsvs = nrow(sv_moritz$plot_data)
-    
-    probs = matrix(0, ncol=nclusters, nrow=nsvs)
-    for (i in 1:nsvs) {
-      probs[i, sv_moritz$plot_data$cluster[i]] = 1
-    }
-    probs = as.data.frame(probs)
-    colnames(probs) = paste("cluster", 1:nclusters, sep="_")
-    sv_assignments = data.frame(chr=info(vcf_sv)$chr1, pos=info(vcf_sv)$pos1, chr2=info(vcf_sv)$chr2, pos2=info(vcf_sv)$pos2, probs)
+    # nclusters = nrow(final_clusters)
+    # nsvs = nrow(sv_moritz$plot_data)
+    # 
+    # probs = matrix(0, ncol=nclusters, nrow=nsvs)
+    # for (i in 1:nsvs) {
+    #   probs[i, sv_moritz$plot_data$cluster[i]] = 1
+    # }
+    # probs = as.data.frame(probs)
+    # colnames(probs) = paste("cluster", 1:nclusters, sep="_")
+    sv_assignments = data.frame(chr=info(vcf_sv)$chr1, pos=info(vcf_sv)$pos1, chr2=info(vcf_sv)$chr2, pos2=info(vcf_sv)$pos2, cluster=sv_moritz$plot_data$cluster)
   } else {
     sv_assignments = NULL
   }
@@ -352,6 +352,30 @@ pcawg11_output = function(snv_moritz, indel_moritz, sv_moritz, MCN, MCN_indel, M
     sv_assignments_prob = NULL
   }
   
+  
+  # iterate over all svs and replace
+  for (i in 1:nrow(final_pcawg11_output$sv_assignments)) {
+    if (any(final_pcawg11_output$sv_assignments$pos[i] == svmap$pos1)) {
+      hit = which(final_pcawg11_output$sv_assignments$pos[i] == svmap$pos1)
+    } else {
+      hit = which(final_pcawg11_output$sv_assignments$pos[i] == svmap$pos2)
+    }
+    
+    svid = svmap$original_id[hit]
+    # now have mapped i onto all_sv_data_row
+    all_sv_data_row = which(all_sv_data$id == svid)
+    all_sv_data$cluster[all_sv_data_row] = final_pcawg11_output$sv_assignments$cluster[i]
+    
+    # do the same with probs
+    
+    all_sv_data_probs[all_sv_data_row, grepl("cluster", colnames(all_sv_data_probs))] = final_pcawg11_output$sv_assignments_prob[i, grepl("cluster", colnames(final_pcawg11_output$sv_assignments_prob))]
+  }
+  
+  # Remap SVs into their correct position
+  res = remap_svs(consensus_vcf_file, svid_map_file, sv_assignments, sv_assignments_prob)
+  sv_assignments = res$sv_assignments
+  sv_assignments_prob = res$sv_assignments_prob
+  
   return(list(final_clusters=final_clusters, 
               snv_assignments=snv_assignments, 
               indel_assignments=indel_assignments,
@@ -362,6 +386,55 @@ pcawg11_output = function(snv_moritz, indel_moritz, sv_moritz, MCN, MCN_indel, M
               snv_assignments_prob=snv_assignments_prob,
               indel_assignments_prob=indel_assignments_prob,
               sv_assignments_prob=sv_assignments_prob))
+}
+
+#' Map SVs back onto their input location and merge with the existing assignments.
+#' @param consensus_vcf_file
+#' @param svid_map_file
+#' @param sv_assignments
+#' @param sv_assignments_prob
+#' @return Two data.frames, one with hard assignments and one with probabilities. Every consensus SV is reported with their consensus location
+remap_svs = function(consensus_vcf_file, svid_map_file, sv_assignments, sv_assignments_prob) {
+  #"../../processed_data/consensusSVs/pcawg_consensus_1.5.160912/1e27cc8a-5394-4958-9af6-5ece1fe24516.pcawg_consensus_1.5.160912.somatic.sv.vcf.gz"
+  cons_sv = readVcf(consensus_vcf_file, "hg19")
+  #"../../processed_data/sv_vafs_geoff/final_v2/svclone_loc_vcfid_map/1e27cc8a-5394-4958-9af6-5ece1fe24516_svin.txt"
+  svmap = read.table(svid_map_file, header=T, stringsAsFactors=F)
+  
+  #' Helper function to split a string by multiple characters
+  strsplits <- function(x, splits, ...) {
+    for (split in splits) {
+      x <- unlist(strsplit(x, split, ...))
+    }
+    return(x[!x == "" & sapply(x, function(y) !any(sapply(c("A", "C", "G", "T"), grepl, y)))]) # Remove empty values
+  }
+  
+  r = lapply(fixed(cons_sv)$ALT, function(x) strsplits(x, c("\\[", "\\]", ":", fixed=T)))
+  m = matrix(unlist(r), ncol=2, byrow=T)
+  all_sv_data = data.frame(chr=as.character(seqnames(cons_sv)), pos=start(cons_sv), chr2=m[,1], pos2=as.numeric(m[,2]), id=rownames(as.data.frame(rowRanges(cons_sv))))
+  all_sv_data_probs = all_sv_data
+  
+  # add extra columns for annotations
+  all_sv_data$cluster = NA
+  for (i in which(grepl("cluster", colnames(sv_assignments_prob)))) {
+    all_sv_data_probs[,colnames(sv_assignments_prob)[i]] = NA
+  }
+  
+  # iterate over all svs and replace
+  for (i in 1:nrow(sv_assignments)) {
+    if (any(sv_assignments$pos[i] == svmap$pos1)) {
+      hit = which(sv_assignments$pos[i] == svmap$pos1)
+    } else {
+      hit = which(sv_assignments$pos[i] == svmap$pos2)
+    }
+    
+    svid = svmap$original_id[hit]
+    all_sv_data_row = which(all_sv_data$id == svid)
+    # now have mapped i onto all_sv_data_row, save the assignments into the all_data tables
+    
+    all_sv_data$cluster[all_sv_data_row] = final_pcawg11_output$sv_assignments$cluster[i]
+    all_sv_data_probs[all_sv_data_row, grepl("cluster", colnames(all_sv_data_probs))] = sv_assignments_prob[i, grepl("cluster", colnames(sv_assignments_prob))]
+  }
+  return(list(all_sv_data=all_sv_data, all_sv_data_probs=all_sv_data_probs))
 }
 
 ########################################################################
