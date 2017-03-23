@@ -261,26 +261,11 @@ get_summary_table_entry = function(samplename, summary_table, cluster_info, snv_
 pcawg11_output = function(snv_moritz, indel_moritz, sv_moritz, MCN, MCN_indel, MCN_sv, vcf_sv, consensus_vcf_file, svid_map_file) {
   # Cluster locations
   final_clusters = snv_moritz$clusters
-  final_clusters$n_indels = indel_moritz$clusters$n_ssms
-  if (!is.null(vcf_sv)) {
-    final_clusters$n_svs = sv_moritz$clusters$n_ssms
-  } else {
-    final_clusters$n_svs = NA 
-  }
   
   # Assignments
   snv_assignments = data.frame(chr=as.character(seqnames(vcf_snv)), pos=as.numeric(start(vcf_snv)), cluster=snv_moritz$plot_data$cluster)
   indel_assignments = data.frame(chr=as.character(seqnames(vcf_indel)), pos=as.numeric(start(vcf_indel)), cluster=indel_moritz$plot_data$cluster)
   if (!is.null(vcf_sv)) {
-    # nclusters = nrow(final_clusters)
-    # nsvs = nrow(sv_moritz$plot_data)
-    # 
-    # probs = matrix(0, ncol=nclusters, nrow=nsvs)
-    # for (i in 1:nsvs) {
-    #   probs[i, sv_moritz$plot_data$cluster[i]] = 1
-    # }
-    # probs = as.data.frame(probs)
-    # colnames(probs) = paste("cluster", 1:nclusters, sep="_")
     sv_assignments = data.frame(chr=info(vcf_sv)$chr1, pos=info(vcf_sv)$pos1, chr2=info(vcf_sv)$chr2, pos2=info(vcf_sv)$pos2, cluster=sv_moritz$plot_data$cluster)
   } else {
     sv_assignments = NULL
@@ -335,7 +320,7 @@ pcawg11_output = function(snv_moritz, indel_moritz, sv_moritz, MCN, MCN_indel, M
     return(snv_assignments_prob)
   }
   
-  # Obtain probabilities - snv
+  # Obtain probabilities of assignments - snv
   snv_assignments_prob = get_probs(final_clusters, MCN, vcf_snv)
   
   if (nrow(indel_assignments) > 0) {
@@ -348,37 +333,26 @@ pcawg11_output = function(snv_moritz, indel_moritz, sv_moritz, MCN, MCN_indel, M
   if (!is.null(vcf_sv)) {
     # Obtain probabilities - SV
     sv_assignments_prob = get_probs(final_clusters, MCN_sv, vcf_sv)
+    sv_assignments_prob$chr2 = sv_assignments$chr2
+    sv_assignments_prob$pos2 = sv_assignments$pos2
   } else {
     sv_assignments_prob = NULL
   }
   
-  
-  # # iterate over all svs and replace
-  # svmap = read.table(svid_map_file, header=T, stringsAsFactors=F)
-  # for (i in 1:nrow(sv_assignments)) {
-  #   if (any(sv_assignments$pos[i] == svmap$pos1)) {
-  #     hit = which(sv_assignments$pos[i] == svmap$pos1)
-  #   } else {
-  #     hit = which(sv_assignments$pos[i] == svmap$pos2)
-  #   }
-  #   
-  #   svid = svmap$original_id[hit]
-  #   # now have mapped i onto all_sv_data_row
-  #   all_sv_data_row = which(all_sv_data$id == svid)
-  #   all_sv_data$cluster[all_sv_data_row] = sv_assignments$cluster[i]
-  #   
-  #   # do the same with probs
-  #   
-  #   all_sv_data_probs[all_sv_data_row, grepl("cluster", colnames(all_sv_data_probs))] = sv_assignments_prob[i, grepl("cluster", colnames(sv_assignments_prob))]
-  # }
-  
-  if (!is.null(vcf_sv)) {
-    # Remap SVs into their correct position
-    res = remap_svs(consensus_vcf_file, svid_map_file, sv_assignments, sv_assignments_prob)
-    sv_assignments = res$sv_assignments
-    sv_assignments_prob = res$sv_assignments_prob
+  # Recalculate the size of the clusters
+  final_clusters$n_snvs = colSums(snv_assignments_prob[, grepl("cluster", colnames(snv_assignments_prob))], na.rm=T)
+  if (nrow(indel_assignments) > 0) {
+    final_clusters$n_indels = colSums(indel_assignments_prob[, grepl("cluster", colnames(indel_assignments_prob))], na.rm=T)
+  } else {
+    final_clusters$n_indels = NA
   }
-  
+  if (!is.null(vcf_sv)) {
+    final_clusters$n_svs = sv_moritz$clusters$n_ssms
+    final_clusters$n_svs = colSums(sv_assignments_prob[, grepl("cluster", colnames(sv_assignments_prob))], na.rm=T)
+  } else {
+    final_clusters$n_svs = NA 
+  }
+   
   return(list(final_clusters=final_clusters, 
               snv_assignments=snv_assignments, 
               indel_assignments=indel_assignments,
@@ -397,10 +371,8 @@ pcawg11_output = function(snv_moritz, indel_moritz, sv_moritz, MCN, MCN_indel, M
 #' @param sv_assignments
 #' @param sv_assignments_prob
 #' @return A list with two data.frames, one with hard assignments and one with probabilities. Every consensus SV is reported with their consensus location
-remap_svs = function(consensus_vcf_file, svid_map_file, sv_assignments, sv_assignments_prob) {
-  #"../../processed_data/consensusSVs/pcawg_consensus_1.5.160912/1e27cc8a-5394-4958-9af6-5ece1fe24516.pcawg_consensus_1.5.160912.somatic.sv.vcf.gz"
+remap_svs = function(consensus_vcf_file, svid_map_file, sv_assignments, sv_assignments_prob, sv_timing) {
   cons_sv = readVcf(consensus_vcf_file, "GRCh37")
-  #"../../processed_data/sv_vafs_geoff/final_v2/svclone_loc_vcfid_map/1e27cc8a-5394-4958-9af6-5ece1fe24516_svin.txt"
   svmap = read.table(svid_map_file, header=T, stringsAsFactors=F)
   
   #' Helper function to split a string by multiple characters
@@ -415,6 +387,13 @@ remap_svs = function(consensus_vcf_file, svid_map_file, sv_assignments, sv_assig
   m = matrix(unlist(r), ncol=2, byrow=T)
   all_sv_data = data.frame(chr=as.character(seqnames(cons_sv)), pos=start(cons_sv), chr2=m[,1], pos2=as.numeric(m[,2]), id=rownames(as.data.frame(rowRanges(cons_sv))))
   all_sv_data_probs = all_sv_data
+  all_sv_timing = data.frame(chromosome=all_sv_data$chr, 
+                         position=all_sv_data$pos,
+                         mut_type=rep("SV", nrow(all_sv_data)),
+                         timing=NA, 
+                         chromosome2=all_sv_data$chr2,
+                         position2=all_sv_data$pos2, 
+                         stringsAsFactors=F)
   
   # add extra columns for annotations
   all_sv_data$cluster = NA
@@ -430,14 +409,16 @@ remap_svs = function(consensus_vcf_file, svid_map_file, sv_assignments, sv_assig
       hit = which(sv_assignments$pos[i] == svmap$pos2)
     }
     
-    svid = svmap$original_id[hit]
-    all_sv_data_row = which(all_sv_data$id == svid)
-    # now have mapped i onto all_sv_data_row, save the assignments into the all_data tables
+    svid = unlist(strsplit(svmap$original_id[hit], "_", fixed=T))[1]
+    all_sv_data_row = which(grepl(svid, all_sv_data$id))
+    # now have mapped i onto all_sv_data_row, which contains both end points of the SV
+    # save the assignments into the all_data tables
     
-    all_sv_data$cluster[all_sv_data_row] = sv_assignments$cluster[i]
+    all_sv_data$cluster[all_sv_data_row] = as.character(sv_assignments$cluster[i])
     all_sv_data_probs[all_sv_data_row, grepl("cluster", colnames(all_sv_data_probs))] = sv_assignments_prob[i, grepl("cluster", colnames(sv_assignments_prob))]
+    all_sv_timing$timing[all_sv_data_row] = as.character(sv_timing$timing[i])
   }
-  return(list(sv_assignments=all_sv_data, sv_assignments_prob=all_sv_data_probs))
+  return(list(sv_assignments=all_sv_data, sv_assignments_prob=all_sv_data_probs, sv_timing=all_sv_timing))
 }
 
 ########################################################################
@@ -461,5 +442,47 @@ g_legend <- function(a.gplot) {
   legend <- tmp$grobs[[leg]]
   return(legend)
 }
+
+calc_exp_mutreads_ccf = function(ccf, purity, ploidy, mean_depth) {
+  return(ccf / (purity*ploidy + (1-purity)*2) * mean_depth)
+}
+
+mergeClustersByMutreadDiff = function(clusters, purity, ploidy, vcf_snv, min_read_diff) {
+  clusters_new = clusters
+  exp_reads = sapply(clusters$ccf, calc_exp_mutreads_ccf, purity=purity, ploidy=ploidy, mean_depth=mean(getTumorDepth(vcf_snv), na.rm=T))
+  ccf_diff = exp_reads[1:(length(exp_reads)-1)] - exp_reads[2:length(exp_reads)]
+  if (any(ccf_diff < min_read_diff)) {
+    
+    #' Iteratively merge a pair of clusters untill no more pairs within distance can be found
+    merged = T
+    while(merged) {
+      merged = F
+      
+      exp_reads = sapply(clusters_new$ccf, calc_exp_mutreads_ccf, purity=purity, ploidy=ploidy, mean_depth=mean(getTumorDepth(vcf_snv), na.rm=T))
+      ccf_diff = exp_reads[1:(length(exp_reads)-1)] - exp_reads[2:length(exp_reads)]
+      to_merge = which(ccf_diff < min_read_diff)
+      
+      if (length(to_merge)==0) {
+        merged = F
+        break
+      } else {
+        i = to_merge[1]
+        clusters_new$ccf[i] = sum(clusters_new$ccf[c(i, i+1)]*clusters_new$n_ssms[c(i, i+1)]) / sum(clusters_new$n_ssms)
+        clusters_new$n_ssms[i] = sum(clusters_new$n_ssms[c(i, i+1)])
+        clusters_new = clusters_new[-(i+1),]
+        merged = T
+      }
+      
+      if (nrow(clusters_new)==1) {
+        merged = F
+        break
+      }
+    }
+  }
+  clusters_new$proportion = clusters_new$ccf / purity
+  return(clusters_new)
+}
+
+
 
 

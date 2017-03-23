@@ -12,9 +12,10 @@ summary_table = args[9]
 svclone_file = args[10]
 svid_map_file = args[11]
 
-merge_clusters = F
+merge_clusters = T
 filter_small_clusters = F # only for summary table entry
 deltaFreq <- 0.00 # merge clusters withing deltaFreq
+min_read_diff = 2 # merge clusters within this number of mutant reads
 
 vcf_template = "~/repo/moritz_mut_assignment/template_icgc_consensus.vcf"
 
@@ -94,7 +95,10 @@ if (max(clusters$cluster) > nrow(clusters)) {
 }	
 
 #' Merge clusters if requested
-if (merge_clusters) { clusters = mergeClusters(clusters) }
+# if (merge_clusters) { clusters = mergeClusters(clusters) }
+
+#' Alt merge clusters
+if (merge_clusters & nrow(clusters) > 1) { clusters = mergeClustersByMutreadDiff(clusters, purity, ploidy, vcf_snv, min_read_diff) }
 
 #' Calculate CCF for each cluster
 clusters$ccf = clusters$proportion/purity
@@ -145,6 +149,8 @@ sample_entry = get_summary_table_entry(samplename=samplename,
                                        do_filter=filter_small_clusters)
 
 write.table(sample_entry, file.path(outdir, paste0(samplename, "_summary_table_entry.txt")), row.names=F, sep="\t", quote=F)
+# Obtain final PCAWG-11 output
+final_pcawg11_output = pcawg11_output(snv_moritz, indel_moritz, sv_moritz, MCN, MCN_indel, MCN_sv, vcf_sv, sv_vcf_file, svid_map_file)
 
 ########################################################################
 # Output to share with PCAWG
@@ -157,10 +163,17 @@ snv_timing = data.frame(chromosome=as.character(seqnames(vcf_snv)),
                         position2=rep(NA, nrow(MCN$D)),
                         stringsAsFactors=F)
 
-snv_output = data.frame(chromosome=as.character(seqnames(vcf_snv)),
-                        position=as.numeric(start(vcf_snv)),
+# snv_output = data.frame(chromosome=as.character(seqnames(vcf_snv)),
+#                         position=as.numeric(start(vcf_snv)),
+#                         mut_type=rep("SNV", nrow(MCN$D)),
+#                         ccf=snv_moritz$clusters$ccf[match(snv_moritz$plot_data$cluster, snv_moritz$clusters$cluster)],
+#                         chromosome2=rep(NA, nrow(MCN$D)),
+#                         position2=rep(NA, nrow(MCN$D)),
+#                         stringsAsFactors=F)
+snv_output = data.frame(chromosome=final_pcawg11_output$snv_assignments_prob$chr,
+                        position=final_pcawg11_output$snv_assignments_prob$pos,
                         mut_type=rep("SNV", nrow(MCN$D)),
-                        ccf=snv_moritz$clusters$ccf[match(snv_moritz$plot_data$cluster, snv_moritz$clusters$cluster)],
+                        final_pcawg11_output$snv_assignments_prob[, grepl("cluster", colnames(final_pcawg11_output$snv_assignments_prob))],
                         chromosome2=rep(NA, nrow(MCN$D)),
                         position2=rep(NA, nrow(MCN$D)),
                         stringsAsFactors=F)
@@ -173,16 +186,31 @@ indel_timing = data.frame(chromosome=as.character(seqnames(vcf_indel)),
                           position2=rep(NA, nrow(MCN_indel$D)),
                           stringsAsFactors=F)
 
-indel_output = data.frame(chromosome=as.character(seqnames(vcf_indel)),
-                          position=as.numeric(start(vcf_indel)),
+indel_output = data.frame(chromosome=final_pcawg11_output$indel_assignments_prob$chr,
+                          position=final_pcawg11_output$indel_assignments_prob$pos,
                           mut_type=rep("indel", nrow(MCN_indel$D)),
-                          ccf=indel_moritz$clusters$ccf[match(indel_moritz$plot_data$cluster, indel_moritz$clusters$cluster)],
+                          final_pcawg11_output$indel_assignments_prob[, grepl("cluster", colnames(final_pcawg11_output$indel_assignments_prob))],
                           chromosome2=rep(NA, nrow(MCN_indel$D)),
                           position2=rep(NA, nrow(MCN_indel$D)),
                           stringsAsFactors=F)
 
+
 if (!is.null(vcf_sv)) {
   #' Some magic required to map back to chr/pos
+  sv_output = data.frame(chromosome=final_pcawg11_output$sv_assignments_prob$chr,
+                         position=final_pcawg11_output$sv_assignments_prob$pos,
+                         mut_type=rep("SV", nrow(final_pcawg11_output$sv_assignments_prob)),
+                         final_pcawg11_output$sv_assignments_prob[, grepl("cluster", colnames(final_pcawg11_output$sv_assignments_prob))],
+                         chromosome2=final_pcawg11_output$sv_assignments_prob$chr2,
+                         position2=final_pcawg11_output$sv_assignments_prob$pos2,
+                         stringsAsFactors=F)
+
+  # Remap SVs into their correct position
+  res = remap_svs(consensus_vcf_file, svid_map_file, final_pcawg11_output$sv_assignments, final_pcawg11_output$sv_assignments_prob, sv_timing)
+  final_pcawg11_output$sv_assignments = res$sv_assignments
+  final_pcawg11_output$sv_assignments_prob = res$sv_assignments_prob
+  sv_timing = res$sv_timing
+
   sv_timing = data.frame(chromosome=info(vcf_sv)$chr1,
                          position=info(vcf_sv)$pos1,
                          mut_type=rep("SV", nrow(MCN_sv$D)),
@@ -191,30 +219,16 @@ if (!is.null(vcf_sv)) {
                          position2=info(vcf_sv)$pos2,
                          stringsAsFactors=F)
   
-  sv_output = data.frame(chromosome=info(vcf_sv)$chr1,
-                          position=info(vcf_sv)$pos1,
-                          mut_type=rep("SV", nrow(MCN_sv$D)),
-                          ccf=sv_moritz$clusters$ccf[match(sv_moritz$plot_data$cluster, sv_moritz$clusters$cluster)],
-                          chromosome2=info(vcf_sv)$chr2,
-                          position2=info(vcf_sv)$pos2,
-                         stringsAsFactors=F)
-}
-
-if (!is.null(vcf_sv)) {
+  
   timing = do.call(rbind, list(snv_timing, indel_timing, sv_timing))
-  ccfs = do.call(rbind, list(snv_output, indel_output, sv_output))
+  assign_probs = do.call(rbind, list(snv_output, indel_output, sv_output))
 } else {
   timing = rbind(snv_timing, indel_timing)
-  ccfs = rbind(snv_output, indel_output)
+  assign_probs = rbind(snv_output, indel_output)
 }
 
-ccfs$ccf = round(ccfs$ccf, 4)
-
-# TODO disabled for now
-# write.table(timing, file.path(outdir, paste0(samplename, "_timing_snv_indel_sv.txt")), row.names=F, sep="\t", quote=F)
-# write.table(ccfs, file.path(outdir, paste0(samplename, "_ccfs_snv_indel_sv.txt")), row.names=F, sep="\t", quote=F)
-final_pcawg11_output = pcawg11_output(snv_moritz, indel_moritz, sv_moritz, MCN, MCN_indel, MCN_sv, vcf_sv, sv_vcf_file, svid_map_file)
-save(final_pcawg11_output, timing, ccfs, file=file.path(outdir, paste0(samplename, "_pcawg11_output.RData")))
+# Save the PCAWG data
+save(final_pcawg11_output, timing, assign_probs, file=file.path(outdir, paste0(samplename, "_pcawg11_output.RData")))
 
 ########################################################################
 # Plot
