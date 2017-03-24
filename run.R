@@ -8,7 +8,7 @@ sv_vcf_file = args[5]
 bb_file = args[6]
 clust_file = args[7]
 purity_file = args[8]
-summary_table = args[9]
+summary_table_file = args[9]
 svclone_file = args[10]
 svid_map_file = args[11]
 
@@ -85,7 +85,7 @@ purity = purityPloidy$purity[purityPloidy$samplename==samplename]
 ploidy = purityPloidy$ploidy[purityPloidy$samplename==samplename]
 bb$clonal_frequency = purity
 
-summary_table = read.table(summary_table, header=T, stringsAsFactors=F)
+summary_table = read.table(summary_table_file, header=T, stringsAsFactors=F)
 sex = summary_table$inferred_sex[summary_table$samplename==samplename]
 is_wgd = purityPloidy$wgd_status[purityPloidy$samplename==samplename]=="wgd"
 
@@ -140,6 +140,9 @@ if (!is.null(vcf_sv)) {
   sv_moritz = assign_moritz(MCN_sv, clusters, purity)
 }
 
+# Obtain final PCAWG-11 output
+final_pcawg11_output = pcawg11_output(snv_moritz, indel_moritz, sv_moritz, MCN, MCN_indel, MCN_sv, vcf_sv, sv_vcf_file, svid_map_file)
+
 ########################################################################
 # Output to share with PCAWG
 ########################################################################
@@ -181,7 +184,6 @@ indel_output = data.frame(chromosome=final_pcawg11_output$indel_assignments_prob
                           chromosome2=rep(NA, nrow(MCN_indel$D)),
                           position2=rep(NA, nrow(MCN_indel$D)),
                           stringsAsFactors=F)
-
 
 if (!is.null(vcf_sv)) {
   #' Some magic required to map back to chr/pos
@@ -262,8 +264,6 @@ sample_entry = data.frame(sample_entry, posthoc_stats, stringsAsFactors=F)
 
 write.table(sample_entry, file.path(outdir, paste0(samplename, "_summary_table_entry.txt")), row.names=F, sep="\t", quote=F)
 
-# Obtain final PCAWG-11 output
-final_pcawg11_output = pcawg11_output(snv_moritz, indel_moritz, sv_moritz, MCN, MCN_indel, MCN_sv, vcf_sv, sv_vcf_file, svid_map_file)
 # Save the PCAWG data
 save(final_pcawg11_output, timing, assign_probs, posthoc_stats, file=file.path(outdir, paste0(samplename, "_pcawg11_output.RData")))
 
