@@ -252,11 +252,19 @@ if (!is.null(vcf_sv)) {
 # some stats
 qq_snv <- mean(MCN$D$pMutCNTail < q/2 | MCN$D$pMutCNTail > 1-q/2, na.rm=T)
 qq_indel <- mean(MCN_indel$D$pMutCNTail < q/2 | MCN_indel$D$pMutCNTail > 1-q/2, na.rm=T)
-qq_sv <- mean(MCN_sv$D$pMutCNTail < q/2 | MCN_sv$D$pMutCNTail > 1-q/2, na.rm=T)
+if (!is.null(vcf_sv)) {
+  qq_sv <- mean(MCN_sv$D$pMutCNTail < q/2 | MCN_sv$D$pMutCNTail > 1-q/2, na.rm=T)
+} else {
+  qq_sv = NA
+}
 
 p_snv = pbinom(sum(MCN$D$pMutCNTail < q/2 | MCN$D$pMutCNTail > 1-q/2, na.rm=T), nrow(MCN$D), 0.05, lower.tail=TRUE)
 p_indel = pbinom(sum(MCN_indel$D$pMutCNTail < q/2 | MCN_indel$D$pMutCNTail > 1-q/2, na.rm=T), nrow(MCN_indel$D), 0.05, lower.tail=TRUE)
-p_sv = pbinom(sum(MCN_sv$D$pMutCNTail < q/2 | MCN_sv$D$pMutCNTail > 1-q/2, na.rm=T), nrow(MCN_sv$D), 0.05, lower.tail=TRUE)
+if (!is.null(vcf_sv)) {
+  p_sv = pbinom(sum(MCN_sv$D$pMutCNTail < q/2 | MCN_sv$D$pMutCNTail > 1-q/2, na.rm=T), nrow(MCN_sv$D), 0.05, lower.tail=TRUE)
+} else {
+  p_sv = NA
+}
 posthoc_stats = data.frame(samplename, qq_snv=qq_snv, qq_indel=qq_indel, qq_sv=qq_sv, p_snv=p_snv, p_indel=p_indel, p_sv=p_sv)
 
 # Save the PCAWG data
