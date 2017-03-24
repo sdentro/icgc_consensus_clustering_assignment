@@ -340,15 +340,19 @@ pcawg11_output = function(snv_moritz, indel_moritz, sv_moritz, MCN, MCN_indel, M
   }
   
   # Recalculate the size of the clusters
-  final_clusters$n_snvs = colSums(snv_assignments_prob[, grepl("cluster", colnames(snv_assignments_prob))], na.rm=T)
+  final_clusters$n_snvs = colSums(snv_assignments_prob[, grepl("cluster", colnames(snv_assignments_prob)), drop=F], na.rm=T)
   if (nrow(indel_assignments) > 0) {
-    final_clusters$n_indels = colSums(indel_assignments_prob[, grepl("cluster", colnames(indel_assignments_prob))], na.rm=T)
+    final_clusters$n_indels = colSums(indel_assignments_prob[, grepl("cluster", colnames(indel_assignments_prob)), drop=F], na.rm=T)
   } else {
     final_clusters$n_indels = NA
   }
   if (!is.null(vcf_sv)) {
     final_clusters$n_svs = sv_moritz$clusters$n_ssms
-    final_clusters$n_svs = colSums(sv_assignments_prob[, grepl("cluster", colnames(sv_assignments_prob))], na.rm=T)
+    if (nrow(final_clusters)==1) {
+	final_clusters$n_svs = sum(sv_assignments_prob[, grepl("cluster", colnames(sv_assignments_prob))], na.rm=T)
+    } else {
+    	final_clusters$n_svs = colSums(sv_assignments_prob[, grepl("cluster", colnames(sv_assignments_prob)), drop=F], na.rm=T)
+    }
   } else {
     final_clusters$n_svs = NA 
   }
@@ -448,9 +452,18 @@ calc_exp_mutreads_ccf = function(ccf, purity, ploidy, mean_depth) {
 }
 
 mergeClustersByMutreadDiff = function(clusters, purity, ploidy, vcf_snv, min_read_diff) {
+	print(clusters)
   clusters_new = clusters
   exp_reads = sapply(clusters$ccf, calc_exp_mutreads_ccf, purity=purity, ploidy=ploidy, mean_depth=mean(getTumorDepth(vcf_snv), na.rm=T))
   ccf_diff = exp_reads[1:(length(exp_reads)-1)] - exp_reads[2:length(exp_reads)]
+  print("MERGING")
+  print(exp_reads)
+  print(ccf_diff)
+
+
+
+
+
   if (any(ccf_diff < min_read_diff)) {
     
     #' Iteratively merge a pair of clusters untill no more pairs within distance can be found
@@ -467,7 +480,8 @@ mergeClustersByMutreadDiff = function(clusters, purity, ploidy, vcf_snv, min_rea
         break
       } else {
         i = to_merge[1]
-        clusters_new$ccf[i] = sum(clusters_new$ccf[c(i, i+1)]*clusters_new$n_ssms[c(i, i+1)]) / sum(clusters_new$n_ssms)
+        print(paste0("merging ", i, " and ", i+1))
+        clusters_new$ccf[i] = sum(clusters_new$ccf[c(i, i+1)]*clusters_new$n_ssms[c(i, i+1)]) / sum(clusters_new$n_ssms[c(i, i+1)])
         clusters_new$n_ssms[i] = sum(clusters_new$n_ssms[c(i, i+1)])
         clusters_new = clusters_new[-(i+1),]
         merged = T
@@ -479,7 +493,11 @@ mergeClustersByMutreadDiff = function(clusters, purity, ploidy, vcf_snv, min_rea
       }
     }
   }
-  clusters_new$proportion = clusters_new$ccf / purity
+  clusters_new$proportion = clusters_new$ccf * purity
+  print(clusters_new)
+  # sorting and renumbering clusters
+  clusters_new = clusters_new[with(clusters_new, order(proportion, decreasing=T)),]
+  clusters_new$cluster = 1:nrow(clusters_new)
   return(clusters_new)
 }
 

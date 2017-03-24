@@ -97,17 +97,19 @@ if (max(clusters$cluster) > nrow(clusters)) {
 #' Merge clusters if requested
 # if (merge_clusters) { clusters = mergeClusters(clusters) }
 
-#' Alt merge clusters
-if (merge_clusters & nrow(clusters) > 1) { clusters = mergeClustersByMutreadDiff(clusters, purity, ploidy, vcf_snv, min_read_diff) }
-
 #' Calculate CCF for each cluster
 clusters$ccf = clusters$proportion/purity
+
+#' Alt merge clusters
+if (merge_clusters & nrow(clusters) > 1) { clusters = mergeClustersByMutreadDiff(clusters, purity, ploidy, vcf_snv, min_read_diff) }
 
 ########################################################################
 # Assignments
 ########################################################################
 #' Assign using Moritz' approach
 MCN <- computeMutCn(vcf_snv, bb, clusters, purity, gender=sex, isWgd=is_wgd, rho=rho, deltaFreq=deltaFreq, n.boot=0)
+#' Save priors for mutation copy number
+bb$timing_param <- MCN$P
 MCN_indel <- computeMutCn(vcf_indel, bb, clusters, purity, gender=sex, isWgd=is_wgd, rho=rho, deltaFreq=deltaFreq, n.boot=0)
 if (!is.null(vcf_sv)) {
   MCN_sv <- computeMutCn(vcf_sv, bb, clusters, purity, gender=sex, isWgd=is_wgd, rho=rho, deltaFreq=deltaFreq, n.boot=0)
@@ -127,6 +129,7 @@ if (!is.null(vcf_sv)) {
 ########################################################################
 snv_moritz = assign_moritz(MCN, clusters, purity)
 indel_moritz = assign_moritz(MCN_indel, clusters, purity)
+save.image("debug_assign.RData")
 if (!is.null(vcf_sv)) {
   sv_moritz = assign_moritz(MCN_sv, clusters, purity)
 }
@@ -173,7 +176,7 @@ snv_timing = data.frame(chromosome=as.character(seqnames(vcf_snv)),
 snv_output = data.frame(chromosome=final_pcawg11_output$snv_assignments_prob$chr,
                         position=final_pcawg11_output$snv_assignments_prob$pos,
                         mut_type=rep("SNV", nrow(MCN$D)),
-                        final_pcawg11_output$snv_assignments_prob[, grepl("cluster", colnames(final_pcawg11_output$snv_assignments_prob))],
+                        final_pcawg11_output$snv_assignments_prob[, grepl("cluster", colnames(final_pcawg11_output$snv_assignments_prob)), drop=F],
                         chromosome2=rep(NA, nrow(MCN$D)),
                         position2=rep(NA, nrow(MCN$D)),
                         stringsAsFactors=F)
@@ -189,7 +192,7 @@ indel_timing = data.frame(chromosome=as.character(seqnames(vcf_indel)),
 indel_output = data.frame(chromosome=final_pcawg11_output$indel_assignments_prob$chr,
                           position=final_pcawg11_output$indel_assignments_prob$pos,
                           mut_type=rep("indel", nrow(MCN_indel$D)),
-                          final_pcawg11_output$indel_assignments_prob[, grepl("cluster", colnames(final_pcawg11_output$indel_assignments_prob))],
+                          final_pcawg11_output$indel_assignments_prob[, grepl("cluster", colnames(final_pcawg11_output$indel_assignments_prob)), drop=F],
                           chromosome2=rep(NA, nrow(MCN_indel$D)),
                           position2=rep(NA, nrow(MCN_indel$D)),
                           stringsAsFactors=F)
@@ -200,16 +203,10 @@ if (!is.null(vcf_sv)) {
   sv_output = data.frame(chromosome=final_pcawg11_output$sv_assignments_prob$chr,
                          position=final_pcawg11_output$sv_assignments_prob$pos,
                          mut_type=rep("SV", nrow(final_pcawg11_output$sv_assignments_prob)),
-                         final_pcawg11_output$sv_assignments_prob[, grepl("cluster", colnames(final_pcawg11_output$sv_assignments_prob))],
+                         final_pcawg11_output$sv_assignments_prob[, grepl("cluster", colnames(final_pcawg11_output$sv_assignments_prob)), drop=F],
                          chromosome2=final_pcawg11_output$sv_assignments_prob$chr2,
                          position2=final_pcawg11_output$sv_assignments_prob$pos2,
                          stringsAsFactors=F)
-
-  # Remap SVs into their correct position
-  res = remap_svs(consensus_vcf_file, svid_map_file, final_pcawg11_output$sv_assignments, final_pcawg11_output$sv_assignments_prob, sv_timing)
-  final_pcawg11_output$sv_assignments = res$sv_assignments
-  final_pcawg11_output$sv_assignments_prob = res$sv_assignments_prob
-  sv_timing = res$sv_timing
 
   sv_timing = data.frame(chromosome=info(vcf_sv)$chr1,
                          position=info(vcf_sv)$pos1,
@@ -218,9 +215,25 @@ if (!is.null(vcf_sv)) {
                          chromosome2=info(vcf_sv)$chr2,
                          position2=info(vcf_sv)$pos2,
                          stringsAsFactors=F)
-  
-  
+
+  # Remap SVs into their correct position
+  res = remap_svs(sv_vcf_file, svid_map_file, final_pcawg11_output$sv_assignments, final_pcawg11_output$sv_assignments_prob, sv_timing)
+  final_pcawg11_output$sv_assignments = res$sv_assignments
+  final_pcawg11_output$sv_assignments_prob = res$sv_assignments_prob
+  sv_timing = res$sv_timing
+
+	print(head(snv_timing))
+  print(head(indel_timing))
+  print(head(sv_timing))
+
+
   timing = do.call(rbind, list(snv_timing, indel_timing, sv_timing))
+
+  print(head(snv_output))
+  print(head(indel_output))
+  print(head(sv_output))
+
+
   assign_probs = do.call(rbind, list(snv_output, indel_output, sv_output))
 } else {
   timing = rbind(snv_timing, indel_timing)
