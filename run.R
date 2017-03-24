@@ -12,6 +12,8 @@ summary_table = args[9]
 svclone_file = args[10]
 svid_map_file = args[11]
 
+load(file.path("output_wm", paste0(samplename, "_assignment.RData")))
+
 merge_clusters = T
 filter_small_clusters = F # only for summary table entry
 deltaFreq <- 0.00 # merge clusters withing deltaFreq
@@ -114,11 +116,7 @@ if (merge_clusters & nrow(clusters) > 1) { clusters = mergeClustersByMutreadDiff
 # #' Save priors for mutation copy number
 # bb$timing_param <- MCN$P
 # MCN_indel <- computeMutCn(vcf_indel, bb, clusters, purity, gender=sex, isWgd=is_wgd, rho=rho_indel, deltaFreq=deltaFreq, n.boot=0)
-
-load(file.path("output_wm", paste0(samplename, "_assignment.RData")))
-source("~/repo/moritz_mut_assignment/MutationTime.R")
-source("~/repo/moritz_mut_assignment/util.R")
-source("~/repo/dpclust3p/R/interconvertMutationBurdens.R")
+bb$timing_param <- MCN$P
 
 if (!is.null(vcf_sv)) {
   MCN_sv <- computeMutCn(vcf_sv, bb, clusters, purity, gender=sex, isWgd=is_wgd, rho=rho_sv, deltaFreq=deltaFreq, n.boot=0)
