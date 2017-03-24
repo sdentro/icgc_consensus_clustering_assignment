@@ -122,6 +122,9 @@ assign_moritz = function(MCN, clusters, purity) {
   colnames(clusters_new_2) = colnames(clusters)
   
   mcn = mutationBurdenToMutationCopyNumber(burden=MCN$D$altCount / (MCN$D$altCount + MCN$D$wtCount), cellularity=purity, normalCopyNumber=rep(2, nrow(MCN$D)), totalCopyNumber=MCN$D$MajCN + MCN$D$MinCN)
+  if (all(is.na(best_cluster))) {
+    mcn = rep(NA, length(best_cluster))
+  }
   ccf = MCN$D$CNF / purity
   plot_data_2 = data.frame(mcn=mcn, ccf=ccf, cluster=factor(best_cluster, levels=rev(unique(sort(clusters$cluster)))))
   return(list(plot_data=plot_data_2, clusters_new=clusters_new_2))

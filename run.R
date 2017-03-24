@@ -11,8 +11,11 @@ purity_file = args[8]
 summary_table_file = args[9]
 svclone_file = args[10]
 svid_map_file = args[11]
+do_load = F
 
-load(file.path("output_wm", paste0(samplename, "_assignment.RData")))
+if (do_load) {
+	load(file.path("output_wm", paste0(samplename, "_assignment.RData")))
+}
 
 merge_clusters = T
 filter_small_clusters = F # only for summary table entry
@@ -59,7 +62,7 @@ library(grid)
 # Overdispersion parameter
 rho_snv = 0.01
 rho_indel = 0.01
-rho_sv = 0.05
+rho_sv = 0.10
 q = 0.05
 
 ########################################################################
@@ -112,11 +115,14 @@ if (merge_clusters & nrow(clusters) > 1) { clusters = mergeClustersByMutreadDiff
 # Assignments
 ########################################################################
 #' Assign using Moritz' approach
-# MCN <- computeMutCn(vcf_snv, bb, clusters, purity, gender=sex, isWgd=is_wgd, rho=rho_snv, deltaFreq=deltaFreq, n.boot=0)
-# #' Save priors for mutation copy number
-# bb$timing_param <- MCN$P
-# MCN_indel <- computeMutCn(vcf_indel, bb, clusters, purity, gender=sex, isWgd=is_wgd, rho=rho_indel, deltaFreq=deltaFreq, n.boot=0)
-bb$timing_param <- MCN$P
+if (!do_load) {
+	MCN <- computeMutCn(vcf_snv, bb, clusters, purity, gender=sex, isWgd=is_wgd, rho=rho_snv, deltaFreq=deltaFreq, n.boot=0)
+	#' Save priors for mutation copy number
+	bb$timing_param <- MCN$P
+	MCN_indel <- computeMutCn(vcf_indel, bb, clusters, purity, gender=sex, isWgd=is_wgd, rho=rho_indel, deltaFreq=deltaFreq, n.boot=0)
+} else {
+	bb$timing_param <- MCN$P
+}
 
 if (!is.null(vcf_sv)) {
   MCN_sv <- computeMutCn(vcf_sv, bb, clusters, purity, gender=sex, isWgd=is_wgd, rho=rho_sv, deltaFreq=deltaFreq, n.boot=0)
@@ -136,6 +142,7 @@ if (!is.null(vcf_sv)) {
 ########################################################################
 snv_moritz = assign_moritz(MCN, clusters, purity)
 indel_moritz = assign_moritz(MCN_indel, clusters, purity)
+save.image("debug.RData")
 if (!is.null(vcf_sv)) {
   sv_moritz = assign_moritz(MCN_sv, clusters, purity)
 }
@@ -293,7 +300,7 @@ if (any(indel_moritz$plot_data$ccf < 1.5)) {
   p4 = make_dummy_figure()
 }
 
-if (!is.null(vcf_sv)) {
+if (!is.null(vcf_sv) && any(!is.na(sv_moritz$plot_data$ccf))) {
   p5 = base_plot(sv_moritz$plot_data, "ccf", "Consensus closest cluster assignment") + xlim(0, 1.5) + geom_vline(data=clusters, mapping=aes(xintercept=ccf)) + xlab("ccf - sv")
   p5 = p5 + scale_fill_hue(labels = rev(paste0(" ", 
                                                sv_binom$clusters$cluster, " : ", 
@@ -303,7 +310,7 @@ if (!is.null(vcf_sv)) {
   p5 = make_dummy_figure()
 }
 
-if (!is.null(vcf_sv) && any(sv_moritz$plot_data$ccf < 1.5)) {
+if (!is.null(vcf_sv) && any(!is.na(sv_moritz$plot_data$ccf)) && any(sv_moritz$plot_data$ccf < 1.5)) {
   all_data = do.call(rbind, list(snv_binom$plot_data, indel_binom$plot_data, sv_binom$plot_data))
   all_data$type = factor(c(rep("SNV", nrow(snv_binom$plot_data)), rep("indel", nrow(indel_binom$plot_data)), rep("sv", nrow(sv_binom$plot_data))), levels=c("SNV", "indel", "sv"))
 } else {
