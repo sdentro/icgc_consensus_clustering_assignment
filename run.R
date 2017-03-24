@@ -55,7 +55,9 @@ library(gridExtra)
 library(grid)
 
 # Overdispersion parameter
-rho = 0.01
+rho_snv = 0.01
+rho_indel = 0.01
+rho_sv = 0.05
 
 ########################################################################
 # Parse the input
@@ -107,12 +109,18 @@ if (merge_clusters & nrow(clusters) > 1) { clusters = mergeClustersByMutreadDiff
 # Assignments
 ########################################################################
 #' Assign using Moritz' approach
-MCN <- computeMutCn(vcf_snv, bb, clusters, purity, gender=sex, isWgd=is_wgd, rho=rho, deltaFreq=deltaFreq, n.boot=0)
-#' Save priors for mutation copy number
-bb$timing_param <- MCN$P
-MCN_indel <- computeMutCn(vcf_indel, bb, clusters, purity, gender=sex, isWgd=is_wgd, rho=rho, deltaFreq=deltaFreq, n.boot=0)
+# MCN <- computeMutCn(vcf_snv, bb, clusters, purity, gender=sex, isWgd=is_wgd, rho=rho_snv, deltaFreq=deltaFreq, n.boot=0)
+# #' Save priors for mutation copy number
+# bb$timing_param <- MCN$P
+# MCN_indel <- computeMutCn(vcf_indel, bb, clusters, purity, gender=sex, isWgd=is_wgd, rho=rho_indel, deltaFreq=deltaFreq, n.boot=0)
+
+load(file.path("output_wm", paste0(samplename, "_assignment.RData")))
+source("~/repo/moritz_mut_assignment/MutationTime.R")
+source("~/repo/moritz_mut_assignment/util.R")
+source("~/repo/dpclust3p/R/interconvertMutationBurdens.R")
+
 if (!is.null(vcf_sv)) {
-  MCN_sv <- computeMutCn(vcf_sv, bb, clusters, purity, gender=sex, isWgd=is_wgd, rho=rho, deltaFreq=deltaFreq, n.boot=0)
+  MCN_sv <- computeMutCn(vcf_sv, bb, clusters, purity, gender=sex, isWgd=is_wgd, rho=rho_sv, deltaFreq=deltaFreq, n.boot=0)
 }
 
 ########################################################################
@@ -200,14 +208,6 @@ indel_output = data.frame(chromosome=final_pcawg11_output$indel_assignments_prob
 
 if (!is.null(vcf_sv)) {
   #' Some magic required to map back to chr/pos
-  sv_output = data.frame(chromosome=final_pcawg11_output$sv_assignments_prob$chr,
-                         position=final_pcawg11_output$sv_assignments_prob$pos,
-                         mut_type=rep("SV", nrow(final_pcawg11_output$sv_assignments_prob)),
-                         final_pcawg11_output$sv_assignments_prob[, grepl("cluster", colnames(final_pcawg11_output$sv_assignments_prob)), drop=F],
-                         chromosome2=final_pcawg11_output$sv_assignments_prob$chr2,
-                         position2=final_pcawg11_output$sv_assignments_prob$pos2,
-                         stringsAsFactors=F)
-
   sv_timing = data.frame(chromosome=info(vcf_sv)$chr1,
                          position=info(vcf_sv)$pos1,
                          mut_type=rep("SV", nrow(MCN_sv$D)),
@@ -221,6 +221,14 @@ if (!is.null(vcf_sv)) {
   final_pcawg11_output$sv_assignments = res$sv_assignments
   final_pcawg11_output$sv_assignments_prob = res$sv_assignments_prob
   sv_timing = res$sv_timing
+  
+  sv_output = data.frame(chromosome=final_pcawg11_output$sv_assignments_prob$chr,
+                         position=final_pcawg11_output$sv_assignments_prob$pos,
+                         mut_type=rep("SV", nrow(final_pcawg11_output$sv_assignments_prob)),
+                         final_pcawg11_output$sv_assignments_prob[, grepl("cluster", colnames(final_pcawg11_output$sv_assignments_prob)), drop=F],
+                         chromosome2=final_pcawg11_output$sv_assignments_prob$chr2,
+                         position2=final_pcawg11_output$sv_assignments_prob$pos2,
+                         stringsAsFactors=F)
 
 	print(head(snv_timing))
   print(head(indel_timing))
@@ -240,8 +248,18 @@ if (!is.null(vcf_sv)) {
   assign_probs = rbind(snv_output, indel_output)
 }
 
+# some stats
+qq_snv <- mean(MCN$D$pMutCNTail < q/2 | MCN$D$pMutCNTail > 1-q/2, na.rm=T)
+qq_indel <- mean(MCN_indel$D$pMutCNTail < q/2 | MCN_indel$D$pMutCNTail > 1-q/2, na.rm=T)
+qq_sv <- mean(MCN_sv$D$pMutCNTail < q/2 | MCN_sv$D$pMutCNTail > 1-q/2, na.rm=T)
+
+p_snv = pbinom(sum(MCN$D$pMutCNTail < q/2 | MCN$D$pMutCNTail > 1-q/2, na.rm=T), nrow(MCN$D), 0.05, lower.tail=TRUE)
+p_indel = pbinom(sum(MCN_indel$D$pMutCNTail < q/2 | MCN_indel$D$pMutCNTail > 1-q/2, na.rm=T), nrow(MCN_indel$D), 0.05, lower.tail=TRUE)
+p_sv = pbinom(sum(MCN_sv$D$pMutCNTail < q/2 | MCN_sv$D$pMutCNTail > 1-q/2, na.rm=T), nrow(MCN_sv$D), 0.05, lower.tail=TRUE)
+posthoc_stats = data.frame(samplename, qq_snv=qq_snv, qq_indel=qq_indel, qq_sv=qq_sv, p_snv=p_snv, p_indel=p_indel, p_sv=p_sv)
+
 # Save the PCAWG data
-save(final_pcawg11_output, timing, assign_probs, file=file.path(outdir, paste0(samplename, "_pcawg11_output.RData")))
+save(final_pcawg11_output, timing, assign_probs, posthoc_stats, file=file.path(outdir, paste0(samplename, "_pcawg11_output.RData")))
 
 ########################################################################
 # Plot
