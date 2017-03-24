@@ -138,31 +138,9 @@ if (!is.null(vcf_sv)) {
 ########################################################################
 snv_moritz = assign_moritz(MCN, clusters, purity)
 indel_moritz = assign_moritz(MCN_indel, clusters, purity)
-save.image("debug_assign.RData")
 if (!is.null(vcf_sv)) {
   sv_moritz = assign_moritz(MCN_sv, clusters, purity)
 }
-
-########################################################################
-# Summary table entry
-########################################################################
-if (!is.null(vcf_sv)) {
-  sv_assignment_table = sv_moritz$plot_data
-} else {
-  sv_assignment_table = NULL
-}
-
-sample_entry = get_summary_table_entry(samplename=samplename, 
-                                       summary_table=summary_table, 
-                                       cluster_info=snv_moritz$clusters_new, 
-                                       snv_assignment_table=snv_moritz$plot_data, 
-                                       indel_assignment_table=indel_moritz$plot_data, 
-                                       sv_assignment_table=sv_assignment_table,
-                                       do_filter=filter_small_clusters)
-
-write.table(sample_entry, file.path(outdir, paste0(samplename, "_summary_table_entry.txt")), row.names=F, sep="\t", quote=F)
-# Obtain final PCAWG-11 output
-final_pcawg11_output = pcawg11_output(snv_moritz, indel_moritz, sv_moritz, MCN, MCN_indel, MCN_sv, vcf_sv, sv_vcf_file, svid_map_file)
 
 ########################################################################
 # Output to share with PCAWG
@@ -249,7 +227,9 @@ if (!is.null(vcf_sv)) {
   assign_probs = rbind(snv_output, indel_output)
 }
 
-# some stats
+########################################################################
+# Summary table entry
+########################################################################
 qq_snv <- mean(MCN$D$pMutCNTail < q/2 | MCN$D$pMutCNTail > 1-q/2, na.rm=T)
 qq_indel <- mean(MCN_indel$D$pMutCNTail < q/2 | MCN_indel$D$pMutCNTail > 1-q/2, na.rm=T)
 if (!is.null(vcf_sv)) {
@@ -267,6 +247,25 @@ if (!is.null(vcf_sv)) {
 }
 posthoc_stats = data.frame(samplename, qq_snv=qq_snv, qq_indel=qq_indel, qq_sv=qq_sv, p_snv=p_snv, p_indel=p_indel, p_sv=p_sv)
 
+if (!is.null(vcf_sv)) {
+  sv_assignment_table = sv_moritz$plot_data
+} else {
+  sv_assignment_table = NULL
+}
+
+sample_entry = get_summary_table_entry(samplename=samplename, 
+                                       summary_table=summary_table, 
+                                       cluster_info=snv_moritz$clusters_new, 
+                                       snv_assignment_table=snv_moritz$plot_data, 
+                                       indel_assignment_table=indel_moritz$plot_data, 
+                                       sv_assignment_table=sv_assignment_table,
+                                       do_filter=filter_small_clusters)
+sample_entry = data.frame(sample_entry, posthoc_stats, stringsAsFactors=F)
+
+write.table(sample_entry, file.path(outdir, paste0(samplename, "_summary_table_entry.txt")), row.names=F, sep="\t", quote=F)
+
+# Obtain final PCAWG-11 output
+final_pcawg11_output = pcawg11_output(snv_moritz, indel_moritz, sv_moritz, MCN, MCN_indel, MCN_sv, vcf_sv, sv_vcf_file, svid_map_file)
 # Save the PCAWG data
 save(final_pcawg11_output, timing, assign_probs, posthoc_stats, file=file.path(outdir, paste0(samplename, "_pcawg11_output.RData")))
 
