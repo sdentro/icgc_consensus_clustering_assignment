@@ -15,6 +15,7 @@ summary_table_file = args[9]
 svclone_file = args[10]
 svid_map_file = args[11]
 do_load = F
+round_subclonal_cna = T
 
 if (do_load) {
 	load(file.path("output_wm", paste0(samplename, "_assignment.RData")))
@@ -71,7 +72,7 @@ q = 0.05
 ########################################################################
 # Parse the input
 ########################################################################
-bb <- loadBB(bb_file)
+bb <- loadBB(bb_file, round_subclonal_cna)
 clusters = read.table(clust_file, header=TRUE, sep="\t")
 
 # sort the clusters and renumber
