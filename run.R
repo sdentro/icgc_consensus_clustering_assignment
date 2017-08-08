@@ -148,6 +148,17 @@ if (!is.null(vcf_sv)) {
   MCN_sv <- computeMutCn(vcf_sv, bb, clusters, purity, gender=sex, isWgd=is_wgd, rho=rho_sv, deltaFreq=deltaFreq, n.boot=0)
 }
 
+snv_mtimer = assign_mtimer(MCN, clusters, purity)
+if (!is.null(vcf_indel)) {
+  indel_mtimer = assign_mtimer(MCN_indel, clusters, purity)
+} else {
+  indel_mtimer = NULL
+}
+
+if (!is.null(vcf_sv)) {
+  sv_mtimer = assign_mtimer(MCN_sv, clusters, purity)
+}
+
 ########################################################################
 # Create the assignment - binom probability
 ########################################################################
@@ -160,20 +171,8 @@ if (!is.null(vcf_sv)) {
 }
 
 ########################################################################
-# Create the assignment
-########################################################################
-snv_mtimer = assign_mtimer(MCN, clusters, purity)
-if (!is.null(vcf_indel)) {
-  indel_mtimer = assign_mtimer(MCN_indel, clusters, purity)
-} else {
-  indel_mtimer = NULL
-}
-
-if (!is.null(vcf_sv)) {
-  sv_mtimer = assign_mtimer(MCN_sv, clusters, purity)
-}
-
 # Obtain final PCAWG-11 output
+########################################################################
 final_pcawg11_output = pcawg11_output(snv_mtimer, indel_mtimer, sv_mtimer, MCN, MCN_indel, MCN_sv, vcf_sv, sv_vcf_file, svid_map_file)
 
 ########################################################################
