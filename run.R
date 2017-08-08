@@ -1,3 +1,6 @@
+#ident = "Y"
+#select_chroms = c("Y")
+
 args = commandArgs(T)
 
 samplename = args[1]
@@ -76,8 +79,12 @@ clusters = clusters[with(clusters, order(proportion, decreasing=T)),]
 clusters$cluster = 1:nrow(clusters)
 
 vcf_snv <- readVcf(snv_vcf_file, genome="GRCh37")
-vcf_indel <- readVcf(indel_vcf_file, genome="GRCh37")
-if (svclone_file=="NA") {
+if (basename(indel_vcf_file)=="NA") {
+	vcf_indel = NULL
+} else {
+	vcf_indel <- readVcf(indel_vcf_file, genome="GRCh37")
+}
+if (basename(svclone_file)=="NA" | is.na(svclone_file)) {
   vcf_sv = NULL
 } else {
   vcf_sv <- prepare_svclone_output(svclone_file, vcf_template, genome="GRCh37")
@@ -86,11 +93,19 @@ if (svclone_file=="NA") {
 purityPloidy <- read.table(purity_file, header=TRUE, sep="\t")
 purity = purityPloidy$purity[purityPloidy$samplename==samplename]
 ploidy = purityPloidy$ploidy[purityPloidy$samplename==samplename]
-bb$clonal_frequency = purity
+if ("ccf" %in% colnames(elementMetadata(bb))) {
+	bb$clonal_frequency = purity*bb$ccf
+} else {
+	bb$clonal_frequency = purity
+}
 
 summary_table = read.table(summary_table_file, header=T, stringsAsFactors=F)
 sex = summary_table$inferred_sex[summary_table$samplename==samplename]
-is_wgd = purityPloidy$wgd_status[purityPloidy$samplename==samplename]=="wgd"
+if ("wgd_status" %in% colnames(purityPloidy)) {
+  is_wgd = purityPloidy$wgd_status[purityPloidy$samplename==samplename]=="wgd"
+} else {
+  is_wgd = NA
+}
 
 #' If not all clusters are there we need to renumber them
 if (max(clusters$cluster) > nrow(clusters)) {
@@ -116,10 +131,15 @@ if (merge_clusters & nrow(clusters) > 1) { clusters = mergeClustersByMutreadDiff
 ########################################################################
 #' Assign using Moritz' approach
 if (!do_load) {
+	#vcf_snv = vcf_snv[seqnames(vcf_snv) %in% select_chroms,]
 	MCN <- computeMutCn(vcf_snv, bb, clusters, purity, gender=sex, isWgd=is_wgd, rho=rho_snv, deltaFreq=deltaFreq, n.boot=0)
+	#save(MCN, file=paste0("mcn_", ident, ".RData"))
+	#q(save="no")
 	#' Save priors for mutation copy number
 	bb$timing_param <- MCN$P
-	MCN_indel <- computeMutCn(vcf_indel, bb, clusters, purity, gender=sex, isWgd=is_wgd, rho=rho_indel, deltaFreq=deltaFreq, n.boot=0)
+	if (!is.null(vcf_indel)) {
+		MCN_indel <- computeMutCn(vcf_indel, bb, clusters, purity, gender=sex, isWgd=is_wgd, rho=rho_indel, deltaFreq=deltaFreq, n.boot=0)
+	}
 } else {
 	bb$timing_param <- MCN$P
 }
@@ -132,7 +152,9 @@ if (!is.null(vcf_sv)) {
 # Create the assignment - binom probability
 ########################################################################
 snv_binom = assign_binom_ll(MCN, clusters, purity)
-indel_binom = assign_binom_ll(MCN_indel, clusters, purity)
+if (!is.null(vcf_indel)) {
+  indel_binom = assign_binom_ll(MCN_indel, clusters, purity)
+}
 if (!is.null(vcf_sv)) {
   sv_binom = assign_binom_ll(MCN_sv, clusters, purity)
 }
@@ -141,8 +163,12 @@ if (!is.null(vcf_sv)) {
 # Create the assignment - Kaixians approach
 ########################################################################
 snv_moritz = assign_moritz(MCN, clusters, purity)
-indel_moritz = assign_moritz(MCN_indel, clusters, purity)
-save.image("debug.RData")
+if (!is.null(vcf_indel)) {
+  indel_moritz = assign_moritz(MCN_indel, clusters, purity)
+} else {
+  indel_moritz = NULL
+}
+
 if (!is.null(vcf_sv)) {
   sv_moritz = assign_moritz(MCN_sv, clusters, purity)
 }
@@ -175,7 +201,7 @@ snv_output = data.frame(chromosome=final_pcawg11_output$snv_assignments_prob$chr
                         chromosome2=rep(NA, nrow(MCN$D)),
                         position2=rep(NA, nrow(MCN$D)),
                         stringsAsFactors=F)
-
+if (!is.null(vcf_indel)) {
 indel_timing = data.frame(chromosome=as.character(seqnames(vcf_indel)),
                           position=as.numeric(start(vcf_indel)),
                           mut_type=rep("indel", nrow(MCN_indel$D)),
@@ -191,6 +217,10 @@ indel_output = data.frame(chromosome=final_pcawg11_output$indel_assignments_prob
                           chromosome2=rep(NA, nrow(MCN_indel$D)),
                           position2=rep(NA, nrow(MCN_indel$D)),
                           stringsAsFactors=F)
+} else {
+  indel_timing = data.frame()
+  indel_output = data.frame()
+}
 
 if (!is.null(vcf_sv)) {
   #' Some magic required to map back to chr/pos
@@ -238,7 +268,11 @@ if (!is.null(vcf_sv)) {
 # Summary table entry
 ########################################################################
 qq_snv <- mean(MCN$D$pMutCNTail < q/2 | MCN$D$pMutCNTail > 1-q/2, na.rm=T)
-qq_indel <- mean(MCN_indel$D$pMutCNTail < q/2 | MCN_indel$D$pMutCNTail > 1-q/2, na.rm=T)
+if (!is.null(vcf_indel)) {
+  qq_indel <- mean(MCN_indel$D$pMutCNTail < q/2 | MCN_indel$D$pMutCNTail > 1-q/2, na.rm=T)
+} else {
+  qq_indel <- NA
+}
 if (!is.null(vcf_sv)) {
   qq_sv <- mean(MCN_sv$D$pMutCNTail < q/2 | MCN_sv$D$pMutCNTail > 1-q/2, na.rm=T)
 } else {
@@ -246,7 +280,11 @@ if (!is.null(vcf_sv)) {
 }
 
 p_snv = pbinom(sum(MCN$D$pMutCNTail < q/2 | MCN$D$pMutCNTail > 1-q/2, na.rm=T), nrow(MCN$D), 0.05, lower.tail=TRUE)
-p_indel = pbinom(sum(MCN_indel$D$pMutCNTail < q/2 | MCN_indel$D$pMutCNTail > 1-q/2, na.rm=T), nrow(MCN_indel$D), 0.05, lower.tail=TRUE)
+if (!is.null(vcf_indel)) {
+  p_indel = pbinom(sum(MCN_indel$D$pMutCNTail < q/2 | MCN_indel$D$pMutCNTail > 1-q/2, na.rm=T), nrow(MCN_indel$D), 0.05, lower.tail=TRUE)
+} else {
+  p_indel = NA
+}
 if (!is.null(vcf_sv)) {
   p_sv = pbinom(sum(MCN_sv$D$pMutCNTail < q/2 | MCN_sv$D$pMutCNTail > 1-q/2, na.rm=T), nrow(MCN_sv$D), 0.05, lower.tail=TRUE)
 } else {
@@ -290,7 +328,7 @@ p3 = p3 + scale_fill_hue(labels = rev(paste0(" ",
                                            round(snv_moritz$clusters$ccf, 2), "  ", 
                                            snv_moritz$clusters$n_ssms, "  ")))
 
-if (any(indel_moritz$plot_data$ccf < 1.5)) {
+if (!is.null(vcf_indel) && any(indel_moritz$plot_data$ccf < 1.5)) {
   p4 = base_plot(indel_moritz$plot_data, "ccf", "Consensus closest cluster assignment") + xlim(0, 1.5) + geom_vline(data=clusters, mapping=aes(xintercept=ccf)) + xlab("ccf - indel")
   p4 = p4 + scale_fill_hue(labels = rev(paste0(" ", 
                                              indel_binom$clusters$cluster, " : ", 
@@ -313,14 +351,16 @@ if (!is.null(vcf_sv) && any(!is.na(sv_moritz$plot_data$ccf))) {
 if (!is.null(vcf_sv) && any(!is.na(sv_moritz$plot_data$ccf)) && any(sv_moritz$plot_data$ccf < 1.5)) {
   all_data = do.call(rbind, list(snv_binom$plot_data, indel_binom$plot_data, sv_binom$plot_data))
   all_data$type = factor(c(rep("SNV", nrow(snv_binom$plot_data)), rep("indel", nrow(indel_binom$plot_data)), rep("sv", nrow(sv_binom$plot_data))), levels=c("SNV", "indel", "sv"))
-} else {
+} else if(!is.null(vcf_indel)) {
   all_data = do.call(rbind, list(snv_binom$plot_data, indel_binom$plot_data))
   all_data$type = factor(c(rep("SNV", nrow(snv_binom$plot_data)), rep("indel", nrow(indel_binom$plot_data))), levels=c("SNV", "indel", "sv"))
+} else {
+  all_data = snv_binom$plot_data
+  all_data$type = factor(c(rep("SNV", nrow(snv_binom$plot_data))), levels=c("SNV", "indel", "sv"))
 }
 p6 = base_plot(all_data, "ccf", "All data", fill="type") + xlim(0, 1.5) + geom_vline(data=clusters, mapping=aes(xintercept=ccf)) + xlab("ccf")
 
 # my_legend = g_legend(p)
-
 if (samplename %in% summary_table$samplename) {
   power = summary_table$nrpcc[summary_table$samplename==samplename]
   histology = summary_table$histology_abbreviation[summary_table$samplename==samplename]
@@ -331,7 +371,7 @@ if (samplename %in% summary_table$samplename) {
 title = paste0(samplename, " - ",
                histology, " - ",
                "SNVs ", nrow(snv_binom$plot_data), " - ",
-               "Purity ", purity, " - ",
+               "Purity ", round(purity, 2), " - ",
                "Ploidy ", ploidy, " - ",
                "Power ", power, " - ",
                "Clust size input ", paste(rev(clusters$n_ssms), collapse=", "))

@@ -131,7 +131,7 @@ defineMcnStates <- function(bb, clusters, purity, gender='female', isWgd= FALSE,
 	
 	# Fix cluster and purity discrepancies
 	clusters$proportion[which.max(clusters$proportion)] <- purity
-	
+
 	cloneFreq <- split(bb$clonal_frequency[subjectHits(overlaps)], queryHits(overlaps))
 	cnStates <- matrix(0, nrow=10000, ncol=6)
 	colnames(cnStates) <- c("state","m","f","n.m.s","pi.m.s","s")
@@ -388,6 +388,7 @@ computeMutCn <- function(vcf, bb, clusters, purity, gender='female', isWgd= FALS
 									}
 									return(P.m.sX)
 								}) else NA
+						if (!is.na(b.m.sX)) {
 						try({
 									CI.m.sX <- apply(b.m.sX, 1, quantile, c(0.025, 0.975))
 									cnStates[,"P.m.sX.lo"] <- CI.m.sX[1,] 
@@ -397,6 +398,10 @@ computeMutCn <- function(vcf, bb, clusters, purity, gender='female', isWgd= FALS
 									cnStates[,"T.m.sX.lo"] <- C.m.sX[1,] 
 									cnStates[,"T.m.sX.up"] <- C.m.sX[2,]
 								})
+						} else {
+							cnStates[,"T.m.sX.lo"] = NA
+							cnStates[,"T.m.sX.up"] = NA
+						}
 					}
 					
 					P.sm.x[apply(is.na(P.sm.x)|is.nan(P.sm.x),1,any),] <- NA

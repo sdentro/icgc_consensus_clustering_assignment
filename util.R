@@ -267,7 +267,11 @@ pcawg11_output = function(snv_moritz, indel_moritz, sv_moritz, MCN, MCN_indel, M
   
   # Assignments
   snv_assignments = data.frame(chr=as.character(seqnames(vcf_snv)), pos=as.numeric(start(vcf_snv)), cluster=snv_moritz$plot_data$cluster)
-  indel_assignments = data.frame(chr=as.character(seqnames(vcf_indel)), pos=as.numeric(start(vcf_indel)), cluster=indel_moritz$plot_data$cluster)
+  if (!is.null(indel_moritz)) {
+    indel_assignments = data.frame(chr=as.character(seqnames(vcf_indel)), pos=as.numeric(start(vcf_indel)), cluster=indel_moritz$plot_data$cluster)
+  } else {
+    indel_assignments = NULL
+  }
   if (!is.null(vcf_sv)) {
     sv_assignments = data.frame(chr=info(vcf_sv)$chr1, pos=info(vcf_sv)$pos1, chr2=info(vcf_sv)$chr2, pos2=info(vcf_sv)$pos2, cluster=sv_moritz$plot_data$cluster)
   } else {
@@ -280,7 +284,7 @@ pcawg11_output = function(snv_moritz, indel_moritz, sv_moritz, MCN, MCN_indel, M
                         tumour_copynumber=MCN$D$MajCN+MCN$D$MinCN, 
                         multiplicity=MCN$D$MutCN, multiplicity_options=NA, probabilities=NA)
   
-  if (nrow(indel_assignments) > 0) {
+  if (!is.null(indel_moritz) && nrow(indel_assignments) > 0) {
     indel_mult = data.frame(chr=indel_assignments$chr, 
                           pos=indel_assignments$pos, 
                           tumour_copynumber=MCN_indel$D$MajCN+MCN_indel$D$MinCN, 
@@ -305,7 +309,8 @@ pcawg11_output = function(snv_moritz, indel_moritz, sv_moritz, MCN, MCN_indel, M
     if (n_subclones==0) {
       r = t(t(sapply(MCN$D$pAllSubclones, function(x) 0)))
     } else if (n_subclones==1) {
-      r = t(t(sapply(MCN$D$pAllSubclones, function(x) if(length(x)!=0) x else rep(NA, n_subclones))))
+      #r = t(t(sapply(MCN$D$pAllSubclones, function(x) if(length(x)!=0) x else rep(NA, n_subclones))))
+      r = matrix(unlist(sapply(MCN$D$pAllSubclones, function(x) if(length(x)!=0) x else rep(NA, n_subclones))))
     } else {
       r = t(sapply(MCN$D$pAllSubclones, function(x) if(length(x)!=0) x else rep(1, n_subclones)))
     }
@@ -325,8 +330,7 @@ pcawg11_output = function(snv_moritz, indel_moritz, sv_moritz, MCN, MCN_indel, M
   
   # Obtain probabilities of assignments - snv
   snv_assignments_prob = get_probs(final_clusters, MCN, vcf_snv)
-  
-  if (nrow(indel_assignments) > 0) {
+  if (!is.null(indel_moritz) && nrow(indel_assignments) > 0) {
     # Obtain probabilities - indel
     indel_assignments_prob = get_probs(final_clusters, MCN_indel, vcf_indel)
   } else {
@@ -344,7 +348,7 @@ pcawg11_output = function(snv_moritz, indel_moritz, sv_moritz, MCN, MCN_indel, M
   
   # Recalculate the size of the clusters
   final_clusters$n_snvs = colSums(snv_assignments_prob[, grepl("cluster", colnames(snv_assignments_prob)), drop=F], na.rm=T)
-  if (nrow(indel_assignments) > 0) {
+  if (!is.null(indel_moritz) && nrow(indel_assignments) > 0) {
     final_clusters$n_indels = colSums(indel_assignments_prob[, grepl("cluster", colnames(indel_assignments_prob)), drop=F], na.rm=T)
   } else {
     final_clusters$n_indels = NA
