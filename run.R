@@ -160,21 +160,21 @@ if (!is.null(vcf_sv)) {
 }
 
 ########################################################################
-# Create the assignment - Kaixians approach
+# Create the assignment
 ########################################################################
-snv_moritz = assign_moritz(MCN, clusters, purity)
+snv_mtimer = assign_mtimer(MCN, clusters, purity)
 if (!is.null(vcf_indel)) {
-  indel_moritz = assign_moritz(MCN_indel, clusters, purity)
+  indel_mtimer = assign_mtimer(MCN_indel, clusters, purity)
 } else {
-  indel_moritz = NULL
+  indel_mtimer = NULL
 }
 
 if (!is.null(vcf_sv)) {
-  sv_moritz = assign_moritz(MCN_sv, clusters, purity)
+  sv_mtimer = assign_mtimer(MCN_sv, clusters, purity)
 }
 
 # Obtain final PCAWG-11 output
-final_pcawg11_output = pcawg11_output(snv_moritz, indel_moritz, sv_moritz, MCN, MCN_indel, MCN_sv, vcf_sv, sv_vcf_file, svid_map_file)
+final_pcawg11_output = pcawg11_output(snv_mtimer, indel_mtimer, sv_mtimer, MCN, MCN_indel, MCN_sv, vcf_sv, sv_vcf_file, svid_map_file)
 
 ########################################################################
 # Output to share with PCAWG
@@ -190,7 +190,7 @@ snv_timing = data.frame(chromosome=as.character(seqnames(vcf_snv)),
 # snv_output = data.frame(chromosome=as.character(seqnames(vcf_snv)),
 #                         position=as.numeric(start(vcf_snv)),
 #                         mut_type=rep("SNV", nrow(MCN$D)),
-#                         ccf=snv_moritz$clusters$ccf[match(snv_moritz$plot_data$cluster, snv_moritz$clusters$cluster)],
+#                         ccf=snv_mtimer$clusters$ccf[match(snv_mtimer$plot_data$cluster, snv_mtimer$clusters$cluster)],
 #                         chromosome2=rep(NA, nrow(MCN$D)),
 #                         position2=rep(NA, nrow(MCN$D)),
 #                         stringsAsFactors=F)
@@ -293,16 +293,16 @@ if (!is.null(vcf_sv)) {
 posthoc_stats = data.frame(samplename, qq_snv=qq_snv, qq_indel=qq_indel, qq_sv=qq_sv, p_snv=p_snv, p_indel=p_indel, p_sv=p_sv)
 
 if (!is.null(vcf_sv)) {
-  sv_assignment_table = sv_moritz$plot_data
+  sv_assignment_table = sv_mtimer$plot_data
 } else {
   sv_assignment_table = NULL
 }
 
 sample_entry = get_summary_table_entry(samplename=samplename, 
                                        summary_table=summary_table, 
-                                       cluster_info=snv_moritz$clusters_new, 
-                                       snv_assignment_table=snv_moritz$plot_data, 
-                                       indel_assignment_table=indel_moritz$plot_data, 
+                                       cluster_info=snv_mtimer$clusters_new, 
+                                       snv_assignment_table=snv_mtimer$plot_data, 
+                                       indel_assignment_table=indel_mtimer$plot_data, 
                                        sv_assignment_table=sv_assignment_table,
                                        do_filter=filter_small_clusters)
 sample_entry = data.frame(sample_entry, posthoc_stats, stringsAsFactors=F)
@@ -322,33 +322,33 @@ p = p + scale_fill_hue(labels = rev(paste0(" ",
                                            round(snv_binom$clusters$ccf, 2), "  ", 
                                            snv_binom$clusters$n_ssms, "  ")))
 
-p3 = base_plot(snv_moritz$plot_data, "ccf", "Consensus closest cluster assignment") + xlim(0, 1.5) + geom_vline(data=clusters, mapping=aes(xintercept=ccf)) + xlab("ccf - snv")
+p3 = base_plot(snv_mtimer$plot_data, "ccf", "Consensus closest cluster assignment") + xlim(0, 1.5) + geom_vline(data=clusters, mapping=aes(xintercept=ccf)) + xlab("ccf - snv")
 p3 = p3 + scale_fill_hue(labels = rev(paste0(" ", 
                                            snv_binom$clusters$cluster, " : ", 
-                                           round(snv_moritz$clusters$ccf, 2), "  ", 
-                                           snv_moritz$clusters$n_ssms, "  ")))
+                                           round(snv_mtimer$clusters$ccf, 2), "  ", 
+                                           snv_mtimer$clusters$n_ssms, "  ")))
 
-if (!is.null(vcf_indel) && any(indel_moritz$plot_data$ccf < 1.5)) {
-  p4 = base_plot(indel_moritz$plot_data, "ccf", "Consensus closest cluster assignment") + xlim(0, 1.5) + geom_vline(data=clusters, mapping=aes(xintercept=ccf)) + xlab("ccf - indel")
+if (!is.null(vcf_indel) && any(indel_mtimer$plot_data$ccf < 1.5)) {
+  p4 = base_plot(indel_mtimer$plot_data, "ccf", "Consensus closest cluster assignment") + xlim(0, 1.5) + geom_vline(data=clusters, mapping=aes(xintercept=ccf)) + xlab("ccf - indel")
   p4 = p4 + scale_fill_hue(labels = rev(paste0(" ", 
                                              indel_binom$clusters$cluster, " : ", 
-                                             round(indel_moritz$clusters$ccf, 2), "  ", 
-                                             indel_moritz$clusters$n_ssms, "  ")))
+                                             round(indel_mtimer$clusters$ccf, 2), "  ", 
+                                             indel_mtimer$clusters$n_ssms, "  ")))
 } else {
   p4 = make_dummy_figure()
 }
 
-if (!is.null(vcf_sv) && any(!is.na(sv_moritz$plot_data$ccf))) {
-  p5 = base_plot(sv_moritz$plot_data, "ccf", "Consensus closest cluster assignment") + xlim(0, 1.5) + geom_vline(data=clusters, mapping=aes(xintercept=ccf)) + xlab("ccf - sv")
+if (!is.null(vcf_sv) && any(!is.na(sv_mtimer$plot_data$ccf))) {
+  p5 = base_plot(sv_mtimer$plot_data, "ccf", "Consensus closest cluster assignment") + xlim(0, 1.5) + geom_vline(data=clusters, mapping=aes(xintercept=ccf)) + xlab("ccf - sv")
   p5 = p5 + scale_fill_hue(labels = rev(paste0(" ", 
                                                sv_binom$clusters$cluster, " : ", 
-                                               round(sv_moritz$clusters$ccf, 2), "  ", 
-                                               sv_moritz$clusters$n_ssms, "  ")))
+                                               round(sv_mtimer$clusters$ccf, 2), "  ", 
+                                               sv_mtimer$clusters$n_ssms, "  ")))
 } else {
   p5 = make_dummy_figure()
 }
 
-if (!is.null(vcf_sv) && any(!is.na(sv_moritz$plot_data$ccf)) && any(sv_moritz$plot_data$ccf < 1.5)) {
+if (!is.null(vcf_sv) && any(!is.na(sv_mtimer$plot_data$ccf)) && any(sv_mtimer$plot_data$ccf < 1.5)) {
   all_data = do.call(rbind, list(snv_binom$plot_data, indel_binom$plot_data, sv_binom$plot_data))
   all_data$type = factor(c(rep("SNV", nrow(snv_binom$plot_data)), rep("indel", nrow(indel_binom$plot_data)), rep("sv", nrow(sv_binom$plot_data))), levels=c("SNV", "indel", "sv"))
 } else if(!is.null(vcf_indel)) {

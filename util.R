@@ -115,7 +115,7 @@ assign_binom_ll = function(MCN, clusters, purity) {
 #' 
 #' @return A list containing two data.frames: (1) The mutations with mcn, ccf and assigned cluster and (2) Cluster number, size, proportion and ccf
 #' @author sd11
-assign_moritz = function(MCN, clusters, purity) {
+assign_mtimer = function(MCN, clusters, purity) {
   best_cluster = sapply(MCN$D$CNF, function(x) if (is.na(x)) NA else which.min(abs(x-clusters$proportion)))
   cluster_counts = table(factor(best_cluster, levels=clusters$cluster))
   clusters_new_2 = data.frame(clusters$cluster, sapply(clusters$cluster, function(x) cluster_counts[[as.character(x)]]), clusters$proportion, clusters$ccf)
