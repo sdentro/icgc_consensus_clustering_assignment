@@ -225,6 +225,11 @@ FRAC_SNVS_CLUSTER = 0.01
 get_summary_table_entry = function(samplename, summary_table, cluster_info, snv_assignment_table, indel_assignment_table=NULL, sv_assignment_table=NULL, do_filter=T) {
   sample_entry = summary_table[summary_table$samplename==samplename, ,drop=F]
   # temp because using old summary table
+  sample_entry$num_subclones = 0
+  sample_entry$num_clonal = 0
+  sample_entry$num_subclonal = 0
+  sample_entry$num_superclones = 0
+  sample_entry$num_superclonal = 0
   sample_entry$indel_clonal = 0
   sample_entry$indel_subclonal = 0
   sample_entry$indel_superclonal = 0
