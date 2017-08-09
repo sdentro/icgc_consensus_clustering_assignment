@@ -501,11 +501,25 @@ posteriorMutCN <- function(x,n, cnStates, xmin=3, rho=0.01){
 }
 
 
-loadBB <- function(file, round_subclones=F){
+loadBB <- function(file, round_subclones=F, remove_subclones=F) {
+  if (round_subclones & remove_subclones) {
+    print("When supplying both rounding and removing to loadBB subclones are removed")
+  }
+  
+  
 	tab <- read.table(file, header=TRUE, sep='\t')
 	r = GRanges(tab$chromosome, IRanges(tab$start, tab$end), strand="*", tab[-3:-1])
 	
-	if (round_subclones) {
+	
+	if (remove_subclones) {
+	  o = findOverlaps(r, r)
+	  c = countSubjectHits(o)
+	  # subclonal_segments = unique(queryHits(o)[which(c > 1)])
+	  subclonal_segments = subjectHits(o)[which(c > 1)]
+	  r = r[-subclonal_segments,]
+	  
+	  
+	} else if (round_subclones) {
 	  
 	  # Check for the ccf column
 	  if (!"ccf" %in% colnames(tab)) {
@@ -527,7 +541,8 @@ loadBB <- function(file, round_subclones=F){
 	      merged_subclonal = rbind(merged_subclonal, tab_select)
 	    }
 	  }
-	  tab_merged = rbind(tab[c==1,], merged_subclonal)
+	  subclonal_segments = subjectHits(o)[which(c > 1)]
+	  tab_merged = rbind(tab[-subclonal_segments,], merged_subclonal)
 	  r = sort(GRanges(tab_merged$chromosome, IRanges(tab_merged$start, tab_merged$end), strand="*", tab_merged[-3:-1]))
 	}
 	

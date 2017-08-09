@@ -15,7 +15,8 @@ summary_table_file = args[9]
 svclone_file = args[10]
 svid_map_file = args[11]
 do_load = F
-round_subclonal_cna = T
+round_subclonal_cna = F
+remove_subclones = T
 
 if (do_load) {
 	load(file.path("output_wm", paste0(samplename, "_assignment.RData")))
