@@ -512,12 +512,15 @@ loadBB <- function(file, round_subclones=F, remove_subclones=F) {
 	
 	
 	if (remove_subclones) {
+	  print("Removing subclonal CNA")
 	  o = findOverlaps(r, r)
 	  c = countSubjectHits(o)
 	  # subclonal_segments = unique(queryHits(o)[which(c > 1)])
 	  subclonal_segments = subjectHits(o)[which(c > 1)]
+	  print("Removing:")
+	  print(subclonal_segments)
 	  r = r[-subclonal_segments,]
-	  
+	  print("Done")
 	  
 	} else if (round_subclones) {
 	  
