@@ -73,7 +73,7 @@ q = 0.05
 ########################################################################
 # Parse the input
 ########################################################################
-bb <- loadBB(bb_file, round_subclonal_cna)
+bb <- loadBB(bb_file, round_subclonal_cna, remove_subclones)
 clusters = read.table(clust_file, header=TRUE, sep="\t")
 
 # sort the clusters and renumber
