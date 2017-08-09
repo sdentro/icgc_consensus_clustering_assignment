@@ -545,7 +545,7 @@ loadBB <- function(file, round_subclones=F, remove_subclones=F) {
 	
 	if (length(r)==0) {
 	  print("No copy number left after filtering, exit now")
-	  q(save="no", status=1)
+	  q(save="no", status=0)
 	}
 	
 	
