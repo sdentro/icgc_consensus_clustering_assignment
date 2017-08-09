@@ -315,7 +315,7 @@ pcawg11_output = function(snv_mtimer, indel_mtimer, sv_mtimer, MCN, MCN_indel, M
     } else {
       # r = t(sapply(MCN$D$pAllSubclones, function(x) if(length(x)!=0) x else rep(1, n_subclones)))
       # r = matrix(unlist(sapply(MCN$D$pAllSubclones, function(x) if(length(x)!=0) x else rep(1, n_subclones))), ncol=n_subclones, byrow=T)
-      r = matrix(unlist(lapply(MCN$D$pAllSubclones, function(x) if (is.null(x)) { c(NA, NA) } else { x })), ncol=n_subclones, byrow=T)
+      r = matrix(unlist(lapply(MCN$D$pAllSubclones, function(x) if (is.null(x)) { rep(NA, n_subclones) } else { x })), ncol=n_subclones, byrow=T)
     }
     snv_assignments_prob = data.frame(chr=as.character(seqnames(vcf_snv)), 
                                       pos=as.numeric(start(vcf_snv)), 
