@@ -543,7 +543,7 @@ loadBB <- function(file, round_subclones=F, remove_subclones=F) {
 	  r = sort(GRanges(tab_merged$chromosome, IRanges(tab_merged$start, tab_merged$end), strand="*", tab_merged[-3:-1]))
 	}
 	
-	if (nrow(r)==0) {
+	if (length(r)==0) {
 	  print("No copy number left after filtering, exit now")
 	  q(save="no", status=1)
 	}
