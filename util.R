@@ -307,9 +307,8 @@ pcawg11_output = function(snv_mtimer, indel_mtimer, sv_mtimer, MCN, MCN_indel, M
   get_probs = function(final_clusters, MCN, vcf_snv, bb) {
     
     o = findOverlaps(vcf_snv, bb)
-    variants_with_cna = subjectHits(o)[!is.na(queryHits(o))]
-    variants_without_cna = subjectHits(o)[is.na(queryHits(o))]
-    
+    variants_with_cna = queryHits(o)[!is.na(subjectHits(o))]
+    variants_without_cna = queryHits(o)[is.na(subjectHits(o))]
     
     n_subclones = nrow(final_clusters)-1
     if (n_subclones==0) {
