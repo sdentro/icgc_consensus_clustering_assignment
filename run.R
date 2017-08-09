@@ -73,7 +73,7 @@ q = 0.05
 ########################################################################
 # Parse the input
 ########################################################################
-bb <- loadBB(bb_file, round_subclonal_cna, remove_subclones)
+bb <- loadBB(bb_file, round_subclones=round_subclonal_cna, remove_subclones=remove_subclones)
 clusters = read.table(clust_file, header=TRUE, sep="\t")
 
 # sort the clusters and renumber
@@ -175,7 +175,7 @@ if (!is.null(vcf_sv)) {
 ########################################################################
 # Obtain final PCAWG-11 output
 ########################################################################
-final_pcawg11_output = pcawg11_output(snv_mtimer, indel_mtimer, sv_mtimer, MCN, MCN_indel, MCN_sv, vcf_sv, sv_vcf_file, svid_map_file)
+final_pcawg11_output = pcawg11_output(snv_mtimer, indel_mtimer, sv_mtimer, MCN, MCN_indel, MCN_sv, vcf_sv, sv_vcf_file, svid_map_file, bb)
 
 ########################################################################
 # Output to share with PCAWG

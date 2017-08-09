@@ -261,7 +261,7 @@ get_summary_table_entry = function(samplename, summary_table, cluster_info, snv_
 # PCAWG11 Calibration format
 ########################################################################
 
-pcawg11_output = function(snv_mtimer, indel_mtimer, sv_mtimer, MCN, MCN_indel, MCN_sv, vcf_sv, consensus_vcf_file, svid_map_file) {
+pcawg11_output = function(snv_mtimer, indel_mtimer, sv_mtimer, MCN, MCN_indel, MCN_sv, vcf_sv, consensus_vcf_file, svid_map_file, bb) {
   # Cluster locations
   final_clusters = snv_mtimer$clusters
   
@@ -304,7 +304,13 @@ pcawg11_output = function(snv_mtimer, indel_mtimer, sv_mtimer, MCN, MCN_indel, M
     sv_mult = NULL
   }
   
-  get_probs = function(final_clusters, MCN, vcf_snv) {
+  get_probs = function(final_clusters, MCN, vcf_snv, bb) {
+    
+    o = findOverlaps(vcf_snv, bb)
+    variants_with_cna = subjectHits(o)[!is.na(queryHits(o))]
+    variants_without_cna = subjectHits(o)[is.na(queryHits(o))]
+    
+    
     n_subclones = nrow(final_clusters)-1
     if (n_subclones==0) {
       r = t(t(sapply(MCN$D$pAllSubclones, function(x) 0)))
@@ -315,10 +321,26 @@ pcawg11_output = function(snv_mtimer, indel_mtimer, sv_mtimer, MCN, MCN_indel, M
       r = t(sapply(MCN$D$pAllSubclones, function(x) if(length(x)!=0) x else rep(1, n_subclones)))
       r = matrix(unlist(sapply(MCN$D$pAllSubclones, function(x) if(length(x)!=0) x else rep(1, n_subclones))), ncol=n_subclones, byrow=T)
     }
-    snv_assignments_prob = data.frame(chr=as.character(seqnames(vcf_snv)), 
-                                      pos=as.numeric(start(vcf_snv)), 
+    snv_assignments_prob = data.frame(chr=as.character(seqnames(vcf_snv)[variants_with_cna]), 
+                                      pos=as.numeric(start(vcf_snv)[variants_with_cna]), 
                                       clone=1-rowSums(r), 
                                       r)
+    
+    if (length(variants_without_cna) > 0) {
+      # Now add the mutations without CNA
+      no_cna = as.data.frame(array(NA, length(variants_without_cna), ncol(snv_assignments_prob)))
+      colnames(no_cna) = colnames(snv_assignments_prob)
+      no_cna$chr = as.character(seqnames(vcf_snv)[variants_without_cna])
+      no_cna$pos = as.numeric(start(vcf_snv)[variants_without_cna])
+      snv_assignments_prob = rbind(snv_assignments_prob, no_cna)
+      
+      # Now sort the df to make the ordering of variants the same
+      r = GRanges(snv_assignments_prob$chr, IRanges(snv_assignments_prob$pos, snv_assignments_prob$pos), strand="*", snv_assignments_prob[-2:-1])
+      snv_assignments_prob = as.data.frame(sort(r))
+      colnames(snv_assignments_prob)[1] = "chr"
+      colnames(snv_assignments_prob)[2] = "pos"
+      snv_assignments_prob = snv_assignments_prob[, -3]
+    }
     
     if (n_subclones==0) {
       snv_assignments_prob = snv_assignments_prob[,1:3]
@@ -330,17 +352,17 @@ pcawg11_output = function(snv_mtimer, indel_mtimer, sv_mtimer, MCN, MCN_indel, M
   }
   
   # Obtain probabilities of assignments - snv
-  snv_assignments_prob = get_probs(final_clusters, MCN, vcf_snv)
+  snv_assignments_prob = get_probs(final_clusters, MCN, vcf_snv, bb)
   if (!is.null(indel_mtimer) && nrow(indel_assignments) > 0) {
     # Obtain probabilities - indel
-    indel_assignments_prob = get_probs(final_clusters, MCN_indel, vcf_indel)
+    indel_assignments_prob = get_probs(final_clusters, MCN_indel, vcf_indel, bb)
   } else {
     indel_assignments_prob = NULL
   }
   
   if (!is.null(vcf_sv)) {
     # Obtain probabilities - SV
-    sv_assignments_prob = get_probs(final_clusters, MCN_sv, vcf_sv)
+    sv_assignments_prob = get_probs(final_clusters, MCN_sv, vcf_sv, bb)
     sv_assignments_prob$chr2 = sv_assignments$chr2
     sv_assignments_prob$pos2 = sv_assignments$pos2
   } else {
