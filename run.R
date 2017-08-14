@@ -1,5 +1,14 @@
-#ident = "Y"
-#select_chroms = c("Y")
+#
+# This is the main function to run the ICGC PCAWG-11 consensus assignment procedure. It takes
+# VCF files with mutations (at least SNVs required, others can be NA) copy number, cluster locations/sizes,
+# a purity value, a PCAWG-11 summary table (with sex and WGD denomiation per patient at least)
+# and two SVclone files with SV mappings (can be NA as well)
+#
+# Out of the box it cannot handle subclonal copy number without introducing additional cluster locations
+# so there are to switches: To round subclonal copy number or to remove it.
+#
+# This approach produces 
+#
 
 args = commandArgs(T)
 
@@ -16,7 +25,7 @@ svclone_file = args[10]
 svid_map_file = args[11]
 do_load = F
 round_subclonal_cna = F
-remove_subclones = T
+remove_subclones = F
 
 if (do_load) {
 	load(file.path("output_wm", paste0(samplename, "_assignment.RData")))
@@ -311,7 +320,7 @@ sample_entry = data.frame(sample_entry, posthoc_stats, stringsAsFactors=F)
 write.table(sample_entry, file.path(outdir, paste0(samplename, "_summary_table_entry.txt")), row.names=F, sep="\t", quote=F)
 
 # Save the PCAWG data
-save(final_pcawg11_output, timing, assign_probs, posthoc_stats, file=file.path(outdir, paste0(samplename, "_pcawg11_output.RData")))
+save(samplename, final_pcawg11_output, timing, assign_probs, posthoc_stats, file=file.path(outdir, paste0(samplename, "_pcawg11_output.RData")))
 
 ########################################################################
 # Plot
