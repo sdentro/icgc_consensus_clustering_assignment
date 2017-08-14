@@ -14,6 +14,7 @@ This repo contains code used to assign mutations (SNV, indel and SV) to consensu
 
 ### How to run
 
+ * Make sure that the PIPELINE_INSTALL_PATH that is defined in a few scripts points to where the code is installed
  * Start with run.R
  * Then produce output, either through run_final_output.R or run_pcawg11.R
 
