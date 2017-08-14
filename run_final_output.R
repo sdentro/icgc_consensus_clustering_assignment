@@ -1,4 +1,7 @@
 #' Produce PCAWG-wide output files
+
+PIPELINE_INSTALL_PATH = "~/repo/moritz_mut_assignment/"
+
 args = commandArgs(T)
 indir = args[1]
 outputdir = args[2]
@@ -8,9 +11,8 @@ make_plot = as.logical(args[5])
 project = args[6]
 infile = args[7]
 
-source("~/repo/moritz_mut_assignment/MutationTime.R")
-source("~/repo/moritz_mut_assignment/util.R")
-source("~/repo/dpclust3p/R/interconvertMutationBurdens.R")
+source(file.path(PIPELINE_INSTALL_PATH, "MutationTime.R"))
+source(file.path(PIPELINE_INSTALL_PATH, "util.R"))
 library(ggplot2)
 library(gridExtra)
 

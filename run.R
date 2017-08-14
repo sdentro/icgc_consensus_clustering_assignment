@@ -10,6 +10,9 @@
 # This approach produces 
 #
 
+
+PIPELINE_INSTALL_PATH = "~/repo/moritz_mut_assignment/"
+
 args = commandArgs(T)
 
 samplename = args[1]
@@ -36,7 +39,7 @@ filter_small_clusters = F # only for summary table entry
 deltaFreq <- 0.00 # merge clusters withing deltaFreq
 min_read_diff = 2 # merge clusters within this number of mutant reads
 
-vcf_template = "~/repo/moritz_mut_assignment/template_icgc_consensus.vcf"
+vcf_template = file.path(PIPELINE_INSTALL_PATH, "template_icgc_consensus.vcf")
 
 # samplename = "55e520f4-0e4b-41a2-9951-c4e9f323100b"
 # cons_method = "wm"
@@ -66,9 +69,8 @@ vcf_template = "~/repo/moritz_mut_assignment/template_icgc_consensus.vcf"
 #clust_file = "dp/20161213_vanloo_wedge_consSNV_prelimConsCNAallStar/2_subclones/0040b1b6-b07a-4b6e-90ef-133523eaf412_subclonal_structure.txt.gz"
 #purity_file = "dp/20161213_vanloo_wedge_consSNV_prelimConsCNAallStar/1_purity_ploidy/purity_ploidy.txt"
 
-source("~/repo/moritz_mut_assignment/MutationTime.R")
-source("~/repo/moritz_mut_assignment/util.R")
-source("~/repo/dpclust3p/R/interconvertMutationBurdens.R")
+source(file.path(PIPELINE_INSTALL_PATH, "MutationTime.R"))
+source(file.path(PIPELINE_INSTALL_PATH, "util.R"))
 library(ggplot2)
 library(gridExtra)
 library(grid)

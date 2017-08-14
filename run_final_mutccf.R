@@ -1,8 +1,9 @@
 #' Produce per mutation observed CCF values - before clustering
 
-source("~/repo/moritz_mut_assignment/MutationTime.R")
-source("~/repo/moritz_mut_assignment/util.R")
-source("~/repo/dpclust3p/R/interconvertMutationBurdens.R")
+PIPELINE_INSTALL_PATH = "~/repo/moritz_mut_assignment/"
+
+source(file.path(PIPELINE_INSTALL_PATH, "MutationTime.R"))
+source(file.path(PIPELINE_INSTALL_PATH, "util.R"))
 
 # produce the final output
 indir = "output_wm"
