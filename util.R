@@ -107,7 +107,7 @@ assign_binom_ll = function(MCN, clusters, purity) {
   return(list(plot_data=plot_data, clusters_new=clusters_new))
 }
 
-#' Assign mutations to the best cluster identified by Moritz method
+#' Assign mutations to the best cluster identified by mtimer
 #' 
 #' @param MCN Output from computeMutCn
 #' @param clusters data.frame with cluster number, size, proportion and ccf

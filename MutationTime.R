@@ -539,7 +539,7 @@ loadBB <- function(file, round_subclones=F, remove_subclones=F) {
 	    }
 	  }
 	  subclonal_segments = subjectHits(o)[which(c > 1)]
-	  tab_merged = rbind(tab[-subclonal_segments,], merged_subclonal)
+	  tab_merged = rbind(tab[c==1,], merged_subclonal)
 	  r = sort(GRanges(tab_merged$chromosome, IRanges(tab_merged$start, tab_merged$end), strand="*", tab_merged[-3:-1]))
 	}
 	

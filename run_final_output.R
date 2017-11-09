@@ -1,15 +1,16 @@
 #' Produce PCAWG-wide output files
 args = commandArgs(T)
-indir = args[1]
-outputdir = args[2]
-has_indel = as.logical(args[3])
-has_sv = as.logical(args[4])
-make_plot = as.logical(args[5])
-project = args[6]
-infile = args[7]
+libpath = args[1]
+indir = args[2]
+outputdir = args[3]
+has_indel = as.logical(args[4])
+has_sv = as.logical(args[5])
+make_plot = as.logical(args[6])
+project = args[7]
+infile = args[8]
 
-source("~/repo/moritz_mut_assignment/MutationTime.R")
-source("~/repo/moritz_mut_assignment/util.R")
+source(file.path(libpath, "MutationTime.R"))
+source(file.path(libpath, "util.R"))
 source("~/repo/dpclust3p/R/interconvertMutationBurdens.R")
 library(ggplot2)
 library(gridExtra)

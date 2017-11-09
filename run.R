@@ -3,20 +3,21 @@
 
 args = commandArgs(T)
 
-samplename = args[1]
-outdir = args[2]
-snv_vcf_file = args[3]
-indel_vcf_file = args[4]
-sv_vcf_file = args[5]
-bb_file = args[6]
-clust_file = args[7]
-purity_file = args[8]
-summary_table_file = args[9]
-svclone_file = args[10]
-svid_map_file = args[11]
+libpath = args[1]
+samplename = args[2]
+outdir = args[3]
+snv_vcf_file = args[4]
+indel_vcf_file = args[5]
+sv_vcf_file = args[6]
+bb_file = args[7]
+clust_file = args[8]
+purity_file = args[9]
+summary_table_file = args[10]
+svclone_file = args[11]
+svid_map_file = args[12]
 do_load = F
 round_subclonal_cna = F
-remove_subclones = T
+remove_subclones = F
 
 if (do_load) {
 	load(file.path("output_wm", paste0(samplename, "_assignment.RData")))
@@ -27,7 +28,7 @@ filter_small_clusters = F # only for summary table entry
 deltaFreq <- 0.00 # merge clusters withing deltaFreq
 min_read_diff = 2 # merge clusters within this number of mutant reads
 
-vcf_template = "~/repo/moritz_mut_assignment/template_icgc_consensus.vcf"
+vcf_template = file.path(libpath, "template_icgc_consensus.vcf")
 
 # samplename = "55e520f4-0e4b-41a2-9951-c4e9f323100b"
 # cons_method = "wm"
@@ -57,8 +58,8 @@ vcf_template = "~/repo/moritz_mut_assignment/template_icgc_consensus.vcf"
 #clust_file = "dp/20161213_vanloo_wedge_consSNV_prelimConsCNAallStar/2_subclones/0040b1b6-b07a-4b6e-90ef-133523eaf412_subclonal_structure.txt.gz"
 #purity_file = "dp/20161213_vanloo_wedge_consSNV_prelimConsCNAallStar/1_purity_ploidy/purity_ploidy.txt"
 
-source("~/repo/moritz_mut_assignment/MutationTime.R")
-source("~/repo/moritz_mut_assignment/util.R")
+source(file.path(libpath, "MutationTime.R"))
+source(file.path(libpath, "util.R"))
 source("~/repo/dpclust3p/R/interconvertMutationBurdens.R")
 library(ggplot2)
 library(gridExtra)
@@ -106,7 +107,8 @@ sex = summary_table$inferred_sex[summary_table$samplename==samplename]
 if ("wgd_status" %in% colnames(purityPloidy)) {
   is_wgd = purityPloidy$wgd_status[purityPloidy$samplename==samplename]=="wgd"
 } else {
-  is_wgd = NA
+  print("Expected a column named wgd_status with items either wgd or no_wgd")
+  q(save="no", status=1)
 }
 
 #' If not all clusters are there we need to renumber them
@@ -175,6 +177,7 @@ if (!is.null(vcf_sv)) {
 ########################################################################
 # Obtain final PCAWG-11 output
 ########################################################################
+save.image("temp2.RData")
 final_pcawg11_output = pcawg11_output(snv_mtimer, indel_mtimer, sv_mtimer, MCN, MCN_indel, MCN_sv, vcf_sv, sv_vcf_file, svid_map_file)
 
 ########################################################################
