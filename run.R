@@ -11,7 +11,6 @@
 #
 
 
-PIPELINE_INSTALL_PATH = "~/repo/moritz_mut_assignment/"
 
 args = commandArgs(T)
 
@@ -28,7 +27,7 @@ summary_table_file = args[10]
 svclone_file = args[11]
 svid_map_file = args[12]
 do_load = F
-round_subclonal_cna = F
+round_subclonal_cna = T
 remove_subclones = F
 
 if (do_load) {
@@ -39,6 +38,8 @@ merge_clusters = T
 filter_small_clusters = F # only for summary table entry
 deltaFreq <- 0.00 # merge clusters withing deltaFreq
 min_read_diff = 2 # merge clusters within this number of mutant reads
+xmin = 0
+project = NA
 
 vcf_template = file.path(libpath, "template_icgc_consensus.vcf")
 
@@ -70,7 +71,8 @@ vcf_template = file.path(libpath, "template_icgc_consensus.vcf")
 #clust_file = "dp/20161213_vanloo_wedge_consSNV_prelimConsCNAallStar/2_subclones/0040b1b6-b07a-4b6e-90ef-133523eaf412_subclonal_structure.txt.gz"
 #purity_file = "dp/20161213_vanloo_wedge_consSNV_prelimConsCNAallStar/1_purity_ploidy/purity_ploidy.txt"
 
-source(file.path(libpath, "MutationTime.R"))
+#source(file.path(libpath, "MutationTime.R"))
+source("~/repo/MutationTime.R/MutationTime.R")
 source(file.path(libpath, "util.R"))
 source("~/repo/dpclust3p/R/interconvertMutationBurdens.R")
 library(ggplot2)
@@ -148,20 +150,20 @@ if (merge_clusters & nrow(clusters) > 1) { clusters = mergeClustersByMutreadDiff
 #' Assign using Moritz' approach
 if (!do_load) {
 	#vcf_snv = vcf_snv[seqnames(vcf_snv) %in% select_chroms,]
-	MCN <- computeMutCn(vcf_snv, bb, clusters, purity, gender=sex, isWgd=is_wgd, rho=rho_snv, deltaFreq=deltaFreq, n.boot=0)
+	MCN <- computeMutCn(vcf_snv, bb, clusters, purity, gender=sex, isWgd=is_wgd, rho=rho_snv, n.boot=0, xmin=xmin)
 	#save(MCN, file=paste0("mcn_", ident, ".RData"))
 	#q(save="no")
 	#' Save priors for mutation copy number
 	bb$timing_param <- MCN$P
 	if (!is.null(vcf_indel)) {
-		MCN_indel <- computeMutCn(vcf_indel, bb, clusters, purity, gender=sex, isWgd=is_wgd, rho=rho_indel, deltaFreq=deltaFreq, n.boot=0)
+		MCN_indel <- computeMutCn(vcf_indel, bb, clusters, purity, gender=sex, isWgd=is_wgd, rho=rho_indel, n.boot=0, xmin=xmin)
 	}
 } else {
 	bb$timing_param <- MCN$P
 }
 
 if (!is.null(vcf_sv)) {
-  MCN_sv <- computeMutCn(vcf_sv, bb, clusters, purity, gender=sex, isWgd=is_wgd, rho=rho_sv, deltaFreq=deltaFreq, n.boot=0)
+  MCN_sv <- computeMutCn(vcf_sv, bb, clusters, purity, gender=sex, isWgd=is_wgd, rho=rho_sv, n.boot=0, xmin=xmin)
 }
 
 snv_mtimer = assign_mtimer(MCN, clusters, purity)
@@ -420,3 +422,50 @@ save.image(file.path(outdir, paste0(samplename, "_assignment.RData")))
 # 	     arrangeGrob(my_legend), nrow=2, heights=c(18,1), top=title)
 # dev.off()
 
+# produce pcawg wide output
+  subcl_struct = final_pcawg11_output$final_clusters[,c("cluster", "proportion", "ccf", "n_snvs", "n_indels", "n_svs")]
+  colnames(subcl_struct)[2] = "fraction_total_cells"
+  colnames(subcl_struct)[3] = "fraction_cancer_cells"
+
+  if (!is.null(vcf_sv)) {
+    # Bug in pipeline, fixed post-hoc
+    sv_output = data.frame(chromosome=final_pcawg11_output$sv_assignments_prob$chr,
+                           position=final_pcawg11_output$sv_assignments_prob$pos,
+                           mut_type=rep("SV", nrow(final_pcawg11_output$sv_assignments_prob)),
+                           final_pcawg11_output$sv_assignments_prob[, grepl("cluster", colnames(final_pcawg11_output$sv_assignments_prob)), drop=F],
+                           chromosome2=final_pcawg11_output$sv_assignments_prob$chr2,
+                           position2=final_pcawg11_output$sv_assignments_prob$pos2,
+                           stringsAsFactors=F)
+    assign_probs = do.call(rbind, list(snv_output, indel_output, sv_output))
+  }
+
+  for (i in which(is.na(timing$timing))) {
+    assign_probs[i, grepl("cluster", colnames(assign_probs))] = NA
+  }
+
+  write.table(subcl_struct, file=file.path(outdir, paste0(samplename, "_subclonal_structure.txt")), quote=F, row.names=F, sep="\t")
+  write.table(assign_probs, file=file.path(outdir, paste0(samplename, "_cluster_assignments.txt")), quote=F, row.names=F, sep="\t")
+  write.table(timing, file=file.path(outdir, paste0(samplename, "_mutation_timing.txt")), quote=F, row.names=F, sep="\t")
+
+
+   write_output_summary_table(subcl_struct, outdir, samplename, project, purity)
+
+
+  #if (make_plot) {
+  #png(file.path(paste0(samplename, "_qq.png")), height=500, width=1800)
+  ##if (!is.null(vcf_sv) && !all(is.na(MCN_sv$D$pMutCNTail))) {
+  #if (has_indel & has_sv) {
+  #      grid.arrange(qqnorm(qnorm(MCN$D$pMutCNTail[!is.na(MCN$D$pMutCNTail)])), qqnorm(qnorm(MCN_indel$D$pMutCNTail[!is.na(MCN_indel$D$pMutCNTail)])), qqnorm(qnorm(MCN_sv$D$pMutCNTail[!is.na(MCN_sv$D$pMutCNTail)])), nrow=1, top=samplename)
+  #} else if (!has_indel & !has_sv) {
+  #        grid.arrange(qqnorm(qnorm(MCN$D$pMutCNTail[!is.na(MCN$D$pMutCNTail)])), make_dummy_figure(), make_dummy_figure(), nrow=1, top=samplename)
+  #} else {
+  #      grid.arrange(qqnorm(qnorm(MCN$D$pMutCNTail[!is.na(MCN$D$pMutCNTail)])), qqnorm(qnorm(MCN_indel$D$pMutCNTail[!is.na(MCN_indel$D$pMutCNTail)])), make_dummy_figure(), nrow=1, top=samplename)
+  #}
+  #dev.off()
+  #}
+
+
+# ptoduce pcawg11 output
+write.table(final_pcawg11_output$final_clusters, file=file.path(outdir, paste0(samplename, "_subclonal_structure.txt")), row.names=F, sep="\t", quote=F)
+write.table(final_pcawg11_output$snv_assignments, file=file.path(outdir, paste0(samplename,"_mutation_assignments.txt")), row.names=F, sep="\t", quote=F)
+write.table(final_pcawg11_output$snv_mult, file=file.path(outdir, paste0(samplename,"_multiplicity.txt")), row.names=F, sep="\t", quote=F)

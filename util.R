@@ -556,4 +556,40 @@ mergeClustersByMutreadDiff = function(clusters, purity, ploidy, vcf_snv, min_rea
 
 
 
+write_output_summary_table = function(structure_df, outdir, samplename, project, purity) {
+  #' Determine which cluster is clonal
+  is_clonal = structure_df$fraction_cancer_cells > 0.9
+  if (any(is_clonal)) {
+    if (sum(is_clonal, na.rm=T) > 1) {
+      clone_id = which.min(abs(structure_df$fraction_cancer_cells[is_clonal]-1))
+      is_clonal = rep(F, length(is_clonal))
+      is_clonal[clone_id] = T
+    }
+    clonal_cluster = structure_df$cluster[is_clonal]
+  } else {
+    clonal_cluster = NA
+  }
 
+  if (!is.na(clonal_cluster)) {
+    num_clonal = structure_df$n_snvs[structure_df$cluster==clonal_cluster]
+    num_subclonal = ifelse(nrow(structure_df) > 1, structure_df$n_snvs[structure_df$cluster!=clonal_cluster], 0)
+  } else {
+    num_clonal = 0
+    num_subclonal = sum(structure_df$n_snvs)
+  }
+
+
+  #' Write out the summary table entry
+  summary_table = data.frame(cancer_type=project,
+                             samplename=samplename,
+                             num_subclones=nrow(structure_df)-1,
+                             purity=purity,
+                             ploidy=NA,
+                             num_clonal=num_clonal,
+                             num_subclonal=num_subclonal,
+                             frac_clonal=num_clonal / (num_clonal+num_subclonal),
+                             noCNA=NA,
+                             clonal=NA,
+                             subclonal=NA)
+  write.table(summary_table, file=file.path(outdir, paste0(samplename, "_summary_table.txt")), row.names=F, sep="\t", quote=F)
+}
