@@ -27,7 +27,7 @@ summary_table_file = args[10]
 svclone_file = args[11]
 svid_map_file = args[12]
 do_load = F
-round_subclonal_cna = T
+round_subclonal_cna = F
 remove_subclones = F
 
 if (do_load) {
@@ -74,7 +74,7 @@ vcf_template = file.path(libpath, "template_icgc_consensus.vcf")
 #source(file.path(libpath, "MutationTime.R"))
 source("~/repo/MutationTime.R/MutationTime.R")
 source(file.path(libpath, "util.R"))
-source("~/repo/dpclust3p/R/interconvertMutationBurdens.R")
+#source("~/repo/dpclust3p/R/interconvertMutationBurdens.R")
 library(ggplot2)
 library(gridExtra)
 library(grid)
@@ -203,6 +203,7 @@ snv_timing = data.frame(chromosome=as.character(seqnames(vcf_snv)),
                         timing=classifyMutations(MCN$D),
                         chromosome2=rep(NA, nrow(MCN$D)),
                         position2=rep(NA, nrow(MCN$D)),
+			svid=rep(NA, nrow(MCN$D)),
                         stringsAsFactors=F)
 
 # snv_output = data.frame(chromosome=as.character(seqnames(vcf_snv)),
@@ -218,6 +219,7 @@ snv_output = data.frame(chromosome=final_pcawg11_output$snv_assignments_prob$chr
                         final_pcawg11_output$snv_assignments_prob[, grepl("cluster", colnames(final_pcawg11_output$snv_assignments_prob)), drop=F],
                         chromosome2=rep(NA, nrow(MCN$D)),
                         position2=rep(NA, nrow(MCN$D)),
+			svid=rep(NA, nrow(MCN$D)),
                         stringsAsFactors=F)
 if (!is.null(vcf_indel)) {
 indel_timing = data.frame(chromosome=as.character(seqnames(vcf_indel)),
@@ -226,6 +228,7 @@ indel_timing = data.frame(chromosome=as.character(seqnames(vcf_indel)),
                           timing=classifyMutations(MCN_indel$D),
                           chromosome2=rep(NA, nrow(MCN_indel$D)),
                           position2=rep(NA, nrow(MCN_indel$D)),
+			  svid=rep(NA, nrow(MCN_indel$D)),
                           stringsAsFactors=F)
 
 indel_output = data.frame(chromosome=final_pcawg11_output$indel_assignments_prob$chr,
@@ -234,6 +237,7 @@ indel_output = data.frame(chromosome=final_pcawg11_output$indel_assignments_prob
                           final_pcawg11_output$indel_assignments_prob[, grepl("cluster", colnames(final_pcawg11_output$indel_assignments_prob)), drop=F],
                           chromosome2=rep(NA, nrow(MCN_indel$D)),
                           position2=rep(NA, nrow(MCN_indel$D)),
+			  svid=rep(NA, nrow(MCN_indel$D)),
                           stringsAsFactors=F)
 } else {
   indel_timing = data.frame()
@@ -255,13 +259,15 @@ if (!is.null(vcf_sv)) {
   final_pcawg11_output$sv_assignments = res$sv_assignments
   final_pcawg11_output$sv_assignments_prob = res$sv_assignments_prob
   sv_timing = res$sv_timing
-  
+  sv_timing$svid = final_pcawg11_output$sv_assignments$id
+
   sv_output = data.frame(chromosome=final_pcawg11_output$sv_assignments_prob$chr,
                          position=final_pcawg11_output$sv_assignments_prob$pos,
                          mut_type=rep("SV", nrow(final_pcawg11_output$sv_assignments_prob)),
                          final_pcawg11_output$sv_assignments_prob[, grepl("cluster", colnames(final_pcawg11_output$sv_assignments_prob)), drop=F],
                          chromosome2=final_pcawg11_output$sv_assignments_prob$chr2,
                          position2=final_pcawg11_output$sv_assignments_prob$pos2,
+			 svid=final_pcawg11_output$sv_assignments$id,
                          stringsAsFactors=F)
 
 	print(head(snv_timing))
@@ -435,6 +441,7 @@ save.image(file.path(outdir, paste0(samplename, "_assignment.RData")))
                            final_pcawg11_output$sv_assignments_prob[, grepl("cluster", colnames(final_pcawg11_output$sv_assignments_prob)), drop=F],
                            chromosome2=final_pcawg11_output$sv_assignments_prob$chr2,
                            position2=final_pcawg11_output$sv_assignments_prob$pos2,
+			   svid=final_pcawg11_output$sv_assignments$id,
                            stringsAsFactors=F)
     assign_probs = do.call(rbind, list(snv_output, indel_output, sv_output))
   }

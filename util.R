@@ -459,21 +459,51 @@ remap_svs = function(consensus_vcf_file, svid_map_file, sv_assignments, sv_assig
   }
   
   # iterate over all svs and replace
-  for (i in 1:nrow(sv_assignments)) {
-    if (any(sv_assignments$pos[i] == svmap$pos1)) {
-      hit = which(sv_assignments$pos[i] == svmap$pos1)
-    } else {
-      hit = which(sv_assignments$pos[i] == svmap$pos2)
-    }
-    
-    svid = unlist(strsplit(svmap$original_id[hit], "_", fixed=T))[1]
-    all_sv_data_row = which(grepl(svid, all_sv_data$id))
-    # now have mapped i onto all_sv_data_row, which contains both end points of the SV
-    # save the assignments into the all_data tables
-    
-    all_sv_data$cluster[all_sv_data_row] = as.character(sv_assignments$cluster[i])
-    all_sv_data_probs[all_sv_data_row, grepl("cluster", colnames(all_sv_data_probs))] = sv_assignments_prob[i, grepl("cluster", colnames(sv_assignments_prob))]
-    all_sv_timing$timing[all_sv_data_row] = as.character(sv_timing$timing[i])
+  #for (i in 1:nrow(sv_assignments)) {
+  #  if (any(sv_assignments$pos[i] == svmap$pos1)) {
+  #    hit = which(sv_assignments$pos[i] == svmap$pos1)
+  #  } else {
+  #    hit = which(sv_assignments$pos[i] == svmap$pos2)
+  #  }
+  #  
+  #  svid = unlist(strsplit(svmap$original_id[hit], "_", fixed=T))[1]
+  #  all_sv_data_row = which(grepl(svid, all_sv_data$id))
+  #  # now have mapped i onto all_sv_data_row, which contains both end points of the SV
+  #  # save the assignments into the all_data tables
+  #  
+  #  all_sv_data$cluster[all_sv_data_row] = as.character(sv_assignments$cluster[i])
+  #  all_sv_data_probs[all_sv_data_row, grepl("cluster", colnames(all_sv_data_probs))] = sv_assignments_prob[i, grepl("cluster", colnames(sv_assignments_prob))]
+  #  all_sv_timing$timing[all_sv_data_row] = as.character(sv_timing$timing[i])
+  #}
+  for (i in 1:nrow(all_sv_data)) {
+
+	  if (grepl("_2", all_sv_data$id[i])) {
+		  row_mapid = gsub("_2", "_1", all_sv_data$id[i])
+	  } else {
+		  row_mapid = all_sv_data$id[i]
+	  }
+
+	  svmap_index = match(row_mapid, svmap$original_id)
+	  if (!is.na(svmap_index)) {
+
+		  match_1 = sv_assignments$chr==svmap$chr1[svmap_index] & sv_assignments$pos==svmap$pos1[svmap_index] & sv_assignments$chr2==svmap$chr2[svmap_index] & sv_assignments$pos2==svmap$pos2[svmap_index]
+		  match_2 = sv_assignments$chr==svmap$chr2[svmap_index] & sv_assignments$pos==svmap$pos2[svmap_index] & sv_assignments$chr2==svmap$chr1[svmap_index] & sv_assignments$pos2==svmap$pos1[svmap_index]
+
+		  if (any(match_1) & !any(match_2)) {
+			  selection = match_1
+		  } else if (any(match_2) & !any(match_1)) {
+			  selection = match_2
+		  } else {
+			  selection = NULL
+		  }
+
+		  if (!is.null(selection)) {
+			  assign_index = which(selection)
+			  all_sv_data$cluster[i] = as.character(sv_assignments$cluster[assign_index])
+			  all_sv_data_probs[i, grepl("cluster", colnames(all_sv_data_probs))] = sv_assignments_prob[assign_index, grepl("cluster", colnames(sv_assignments_prob))]
+			  all_sv_timing$timing[i] = as.character(sv_timing$timing[assign_index])
+		  }
+	  }
   }
   return(list(sv_assignments=all_sv_data, sv_assignments_prob=all_sv_data_probs, sv_timing=all_sv_timing))
 }
