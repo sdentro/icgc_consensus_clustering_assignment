@@ -191,7 +191,6 @@ if (!is.null(vcf_sv)) {
 ########################################################################
 # Obtain final PCAWG-11 output
 ########################################################################
-save.image("temp2.RData")
 final_pcawg11_output = pcawg11_output(snv_mtimer, indel_mtimer, sv_mtimer, MCN, MCN_indel, MCN_sv, vcf_sv, sv_vcf_file, svid_map_file)
 
 ########################################################################
