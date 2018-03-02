@@ -150,20 +150,20 @@ if (merge_clusters & nrow(clusters) > 1) { clusters = mergeClustersByMutreadDiff
 #' Assign using Moritz' approach
 if (!do_load) {
 	#vcf_snv = vcf_snv[seqnames(vcf_snv) %in% select_chroms,]
-	MCN <- computeMutCn(vcf_snv, bb, clusters, purity, gender=sex, isWgd=is_wgd, rho=rho_snv, n.boot=0, xmin=xmin)
+	MCN <- computeMutCn(vcf_snv, bb, clusters, purity, gender=sex, isWgd=is_wgd, rho=rho_snv, n.boot=0, xmin=xmin, deltaFreq=deltaFreq)
 	#save(MCN, file=paste0("mcn_", ident, ".RData"))
 	#q(save="no")
 	#' Save priors for mutation copy number
 	bb$timing_param <- MCN$P
 	if (!is.null(vcf_indel)) {
-		MCN_indel <- computeMutCn(vcf_indel, bb, clusters, purity, gender=sex, isWgd=is_wgd, rho=rho_indel, n.boot=0, xmin=xmin)
+		MCN_indel <- computeMutCn(vcf_indel, bb, clusters, purity, gender=sex, isWgd=is_wgd, rho=rho_indel, n.boot=0, xmin=xmin, deltaFreq=deltaFreq)
 	}
 } else {
 	bb$timing_param <- MCN$P
 }
 
 if (!is.null(vcf_sv)) {
-  MCN_sv <- computeMutCn(vcf_sv, bb, clusters, purity, gender=sex, isWgd=is_wgd, rho=rho_sv, n.boot=0, xmin=xmin)
+  MCN_sv <- computeMutCn(vcf_sv, bb, clusters, purity, gender=sex, isWgd=is_wgd, rho=rho_sv, n.boot=0, xmin=xmin, deltaFreq=deltaFreq)
 }
 
 snv_mtimer = assign_mtimer(MCN, clusters, purity)
