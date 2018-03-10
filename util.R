@@ -483,7 +483,7 @@ remap_svs = function(consensus_vcf_file, svid_map_file, sv_assignments, sv_assig
 		  row_mapid = all_sv_data$id[i]
 	  }
 
-	  svmap_index = match(row_mapid, svmap$original_id)
+	  svmap_index = match(row_mapid, svmap$original_ID)
 	  if (!is.na(svmap_index)) {
 
 		  match_1 = sv_assignments$chr==svmap$chr1[svmap_index] & sv_assignments$pos==svmap$pos1[svmap_index] & sv_assignments$chr2==svmap$chr2[svmap_index] & sv_assignments$pos2==svmap$pos2[svmap_index]
