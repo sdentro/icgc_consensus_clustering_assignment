@@ -153,8 +153,8 @@ if (!do_load) {
 	MCN <- computeMutCn(vcf_snv, bb, clusters, purity, gender=sex, isWgd=is_wgd, rho=rho_snv, n.boot=0, xmin=xmin, deltaFreq=deltaFreq)
 	#save(MCN, file=paste0("mcn_", ident, ".RData"))
 	#q(save="no")
-	#' Save priors for mutation copy number
-	bb$timing_param <- MCN$P
+	# Save priors for mutation copy number - commented out because priors are not pre-calculated when there are no SNVs on a segment, which yields no probabilities for indels and SVs on such a segment
+	#bb$timing_param <- MCN$P
 	if (!is.null(vcf_indel)) {
 		MCN_indel <- computeMutCn(vcf_indel, bb, clusters, purity, gender=sex, isWgd=is_wgd, rho=rho_indel, n.boot=0, xmin=xmin, deltaFreq=deltaFreq)
 	}
