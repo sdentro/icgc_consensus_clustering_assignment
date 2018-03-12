@@ -363,7 +363,7 @@ pcawg11_output = function(snv_mtimer, indel_mtimer, sv_mtimer, MCN, MCN_indel, M
     snv_assignments_prob = data.frame(chr=as.character(seqnames(vcf_snv)), 
                                       pos=as.numeric(start(vcf_snv)), 
                                       clone=1-rowSums(r), 
-                                      r)
+                                      r, stringsAsFactors=F)
     
     if (n_subclones==0) {
       snv_assignments_prob = snv_assignments_prob[,1:3]
@@ -386,8 +386,11 @@ pcawg11_output = function(snv_mtimer, indel_mtimer, sv_mtimer, MCN, MCN_indel, M
   if (!is.null(vcf_sv)) {
     # Obtain probabilities - SV
     sv_assignments_prob = get_probs(final_clusters, MCN_sv, vcf_sv)
+    same_end_selected = sv_assignments$chr==sv_assignments_prob$chr & sv_assignments$pos==sv_assignments_prob$pos
     sv_assignments_prob$chr2 = sv_assignments$chr2
     sv_assignments_prob$pos2 = sv_assignments$pos2
+    sv_assignments_prob$chr[!same_end_selected] = sv_assignments$chr[!same_end_selected]
+    sv_assignments_prob$pos[!same_end_selected] = sv_assignments$pos[!same_end_selected]
   } else {
     sv_assignments_prob = NULL
   }
