@@ -203,6 +203,9 @@ snv_timing = data.frame(chromosome=as.character(seqnames(vcf_snv)),
                         chromosome2=rep(NA, nrow(MCN$D)),
                         position2=rep(NA, nrow(MCN$D)),
 			svid=rep(NA, nrow(MCN$D)),
+			prob_clonal_early=MCN$D$pGain,
+			prob_clonal_late=MCN$D$pSingle,
+			prob_subclonal=MCN$D$pSub,
                         stringsAsFactors=F)
 
 # snv_output = data.frame(chromosome=as.character(seqnames(vcf_snv)),
@@ -228,6 +231,9 @@ indel_timing = data.frame(chromosome=as.character(seqnames(vcf_indel)),
                           chromosome2=rep(NA, nrow(MCN_indel$D)),
                           position2=rep(NA, nrow(MCN_indel$D)),
 			  svid=rep(NA, nrow(MCN_indel$D)),
+			  prob_clonal_early=MCN_indel$D$pGain,
+			  prob_clonal_late=MCN_indel$D$pSingle,
+			  prob_subclonal=MCN_indel$D$pSub,
                           stringsAsFactors=F)
 
 indel_output = data.frame(chromosome=final_pcawg11_output$indel_assignments_prob$chr,
@@ -251,6 +257,10 @@ if (!is.null(vcf_sv)) {
                          timing=classifyMutations(MCN_sv$D),
                          chromosome2=info(vcf_sv)$chr2,
                          position2=info(vcf_sv)$pos2,
+			 svid=NA,
+			 prob_clonal_early=MCN_sv$D$pGain,
+			 prob_clonal_late=MCN_sv$D$pSingle,
+			 prob_subclonal=MCN_sv$D$pSub,
                          stringsAsFactors=F)
 
   # Remap SVs into their correct position
@@ -259,6 +269,9 @@ if (!is.null(vcf_sv)) {
   final_pcawg11_output$sv_assignments_prob = res$sv_assignments_prob
   sv_timing = res$sv_timing
   sv_timing$svid = final_pcawg11_output$sv_assignments$id
+  sv_timing$prob_clonal_early = MCN_sv$D$pGain
+  sv_timing$prob_clonal_late = MCN_sv$D$pSingle
+  sv_timing$prob_subclonal = MCN_sv$D$pSub
 
   sv_output = data.frame(chromosome=final_pcawg11_output$sv_assignments_prob$chr,
                          position=final_pcawg11_output$sv_assignments_prob$pos,

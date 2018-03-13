@@ -502,9 +502,18 @@ remap_svs = function(consensus_vcf_file, svid_map_file, sv_assignments, sv_assig
 
 		  if (!is.null(selection)) {
 			  assign_index = which(selection)
-			  all_sv_data$cluster[i] = as.character(sv_assignments$cluster[assign_index])
-			  all_sv_data_probs[i, grepl("cluster", colnames(all_sv_data_probs))] = sv_assignments_prob[assign_index, grepl("cluster", colnames(sv_assignments_prob))]
-			  all_sv_timing$timing[i] = as.character(sv_timing$timing[assign_index])
+			  if (length(assign_index)==1) {
+			  	all_sv_data$cluster[i] = as.character(sv_assignments$cluster[assign_index])
+			  	all_sv_data_probs[i, grepl("cluster", colnames(all_sv_data_probs))] = sv_assignments_prob[assign_index, grepl("cluster", colnames(sv_assignments_prob))]
+			  	all_sv_timing$timing[i] = as.character(sv_timing$timing[assign_index])
+			  } else {
+				# in this scenario multiple chromosome/position entries mapped to this entry in all_sv_data, we'll keep this ambiguous therefore as we cannot map the probabilities uniquely
+				print("Found multiple mapping entries")
+			  	print(sv_assignments[assign_index,])
+				all_sv_data$cluster[i] = NA
+			  	all_sv_data_probs[i, grepl("cluster", colnames(all_sv_data_probs))] = NA
+				all_sv_timing$timing[i] = NA
+			  }
 		  }
 	  }
   }
