@@ -453,6 +453,10 @@ remap_svs = function(consensus_vcf_file, svid_map_file, sv_assignments, sv_assig
                          timing=NA, 
                          chromosome2=all_sv_data$chr2,
                          position2=all_sv_data$pos2, 
+			 svid=NA,
+			 prob_clonal_early=NA,
+			 prob_clonal_late=NA,
+			 prob_subclonal=NA,
                          stringsAsFactors=F)
   
   # add extra columns for annotations
@@ -506,6 +510,9 @@ remap_svs = function(consensus_vcf_file, svid_map_file, sv_assignments, sv_assig
 			  	all_sv_data$cluster[i] = as.character(sv_assignments$cluster[assign_index])
 			  	all_sv_data_probs[i, grepl("cluster", colnames(all_sv_data_probs))] = sv_assignments_prob[assign_index, grepl("cluster", colnames(sv_assignments_prob))]
 			  	all_sv_timing$timing[i] = as.character(sv_timing$timing[assign_index])
+				all_sv_timing$prob_clonal_early[i] = sv_timing$prob_clonal_early[assign_index]
+				all_sv_timing$prob_clonal_late[i] = sv_timing$prob_clonal_late[assign_index]
+				all_sv_timing$prob_subclonal[i] = sv_timing$prob_subclonal[assign_index]
 			  } else {
 				# in this scenario multiple chromosome/position entries mapped to this entry in all_sv_data, we'll keep this ambiguous therefore as we cannot map the probabilities uniquely
 				print("Found multiple mapping entries")
@@ -513,6 +520,9 @@ remap_svs = function(consensus_vcf_file, svid_map_file, sv_assignments, sv_assig
 				all_sv_data$cluster[i] = NA
 			  	all_sv_data_probs[i, grepl("cluster", colnames(all_sv_data_probs))] = NA
 				all_sv_timing$timing[i] = NA
+				all_sv_timing$prob_clonal_early[i] = NA
+				all_sv_timing$prob_clonal_late[i] = NA
+				all_sv_timing$prob_subclonal[i] = NA
 			  }
 		  }
 	  }

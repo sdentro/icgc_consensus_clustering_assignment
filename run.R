@@ -269,9 +269,6 @@ if (!is.null(vcf_sv)) {
   final_pcawg11_output$sv_assignments_prob = res$sv_assignments_prob
   sv_timing = res$sv_timing
   sv_timing$svid = final_pcawg11_output$sv_assignments$id
-  sv_timing$prob_clonal_early = MCN_sv$D$pGain
-  sv_timing$prob_clonal_late = MCN_sv$D$pSingle
-  sv_timing$prob_subclonal = MCN_sv$D$pSub
 
   sv_output = data.frame(chromosome=final_pcawg11_output$sv_assignments_prob$chr,
                          position=final_pcawg11_output$sv_assignments_prob$pos,
