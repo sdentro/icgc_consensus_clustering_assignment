@@ -82,7 +82,7 @@ library(grid)
 # Overdispersion parameter
 rho_snv = 0.01
 rho_indel = 0.01
-rho_sv = 0.10
+rho_sv = 0.05
 q = 0.05
 
 ########################################################################
