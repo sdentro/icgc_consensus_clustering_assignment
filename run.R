@@ -10,26 +10,57 @@
 # This approach produces 
 #
 
+########################################################################
+# Command line options
+########################################################################
+library(optparse)
+option_list = list(
+  make_option(c("-l", "--libpath"), type="character", default=NULL, help="Path to pipeline installation directory", metavar="character"),
+  make_option(c("--sam"), type="character", default=NULL, help="Samplename", metavar="character"),
+  make_option(c("-o", "--outputdir"), type="character", default=NULL, help="Directory where output will be written", metavar="character"),
+  make_option(c("--snv"), type="character", default=NULL, help="SNV VCF file", metavar="character"),
+  make_option(c("--ind"), type="character", default=NULL, help="Indel VCF file", metavar="character"),
+  make_option(c("--sv"), type="character", default=NULL, help="SV VCF file", metavar="character"),
+  make_option(c("--cna"), type="character", default=NULL, help="CNA segments file", metavar="character"),
+  make_option(c("--struct"), type="character", default=NULL, help="Subclonal structure file", metavar="character"),
+  make_option(c("--pur"), type="character", default=NULL, help="File with purity information", metavar="character"),
+  make_option(c("--summ"), type="character", default=NULL, help="Summary table", metavar="character"),
+  make_option(c("--sv_vaf"), type="character", default=NULL, help="SVclone VAF file", metavar="character"),
+  make_option(c("--sv_map"), type="character", default=NULL, help="SVclone ID mapping file", metavar="character"),
+  make_option(c("--round_subclonal_cna"), default=FALSE, type="logical", help="Round subclonal CNAs", metavar="logical", action="store_true"),
+  make_option(c("--remove_subclonal_cna"), default=FALSE, type="logical", help="Remove subclonal CNAs", metavar="logical", action="store_true")
+)
+
+opt_parser = OptionParser(option_list=option_list)
+opt = parse_args(opt_parser)
+
+libpath = opt$libpath
+samplename = opt$sam
+outdir = opt$outputdir
+snv_vcf_file = opt$snv
+indel_vcf_file = opt$ind
+sv_vcf_file = opt$sv
+bb_file = opt$cna
+clust_file = opt$struct
+purity_file = opt$pur
+summary_table_file = opt$summ
+svclone_file = opt$sv_vaf
+svid_map_file = opt$sv_map
+round_subclonal_cna = opt$round_subclonal_cna
+remove_subclones = opt$remove_subclonal_cna
+
+if (is.null(libpath) | is.null(samplename) | is.null(outdir) | is.null(snv_vcf_file) | is.null(bb_file) | is.null(clust_file) | is.null(purity_file) | is.null(summary_table_file)) {
+  print_help(opt_parser)
+  stop("Missing required parameters\n", call.=FALSE)
+}
+
+if (round_subclonal_cna & remove_subclones) {
+  stop("round_subclonal_cna and remove_subclonal_cna cannot both be set to TRUE, please chose one\n", call.=FALSE)
+}
 
 
-args = commandArgs(T)
 
-libpath = args[1]
-samplename = args[2]
-outdir = args[3]
-snv_vcf_file = args[4]
-indel_vcf_file = args[5]
-sv_vcf_file = args[6]
-bb_file = args[7]
-clust_file = args[8]
-purity_file = args[9]
-summary_table_file = args[10]
-svclone_file = args[11]
-svid_map_file = args[12]
 do_load = F
-round_subclonal_cna = F
-remove_subclones = F
-
 if (do_load) {
 	load(file.path("output_wm", paste0(samplename, "_assignment.RData")))
 }
@@ -61,11 +92,6 @@ vcf_template = file.path(libpath, "template_icgc_consensus.vcf")
 # }
 
 
-# mult_file = args[9]
-# dpc_assign_file = args[10]
-# merge_clusters = F
-
-
 #vcf_file = "final/final_consensus_12oct_passonly/snv_mnv/0040b1b6-b07a-4b6e-90ef-133523eaf412.consensus.20160830.somatic.snv_mnv.vcf.gz"
 #bb_file = "dp/20161213_vanloo_wedge_consSNV_prelimConsCNAallStar/4_copynumber/0040b1b6-b07a-4b6e-90ef-133523eaf412_segments.txt.gz"
 #clust_file = "dp/20161213_vanloo_wedge_consSNV_prelimConsCNAallStar/2_subclones/0040b1b6-b07a-4b6e-90ef-133523eaf412_subclonal_structure.txt.gz"
@@ -74,7 +100,6 @@ vcf_template = file.path(libpath, "template_icgc_consensus.vcf")
 #source(file.path(libpath, "MutationTime.R"))
 source("~/repo/MutationTime.R/MutationTime.R")
 source(file.path(libpath, "util.R"))
-#source("~/repo/dpclust3p/R/interconvertMutationBurdens.R")
 library(ggplot2)
 library(gridExtra)
 library(grid)
@@ -88,26 +113,26 @@ q = 0.05
 ########################################################################
 # Parse the input
 ########################################################################
-bb <- loadBB(bb_file, round_subclones=round_subclonal_cna, remove_subclones=remove_subclones)
+bb = loadBB(bb_file, round_subclones=round_subclonal_cna, remove_subclones=remove_subclones)
 clusters = read.table(clust_file, header=TRUE, sep="\t")
 
 # sort the clusters and renumber
 clusters = clusters[with(clusters, order(proportion, decreasing=T)),]
 clusters$cluster = 1:nrow(clusters)
 
-vcf_snv <- readVcf(snv_vcf_file, genome="GRCh37")
-if (basename(indel_vcf_file)=="NA") {
+vcf_snv = readVcf(snv_vcf_file, genome="GRCh37")
+if (is.null(indel_vcf_file)) {
 	vcf_indel = NULL
 } else {
-	vcf_indel <- readVcf(indel_vcf_file, genome="GRCh37")
+	vcf_indel = readVcf(indel_vcf_file, genome="GRCh37")
 }
-if (basename(svclone_file)=="NA" | is.na(svclone_file)) {
+if (is.null(svclone_file) | is.null(svclone_file)) {
   vcf_sv = NULL
 } else {
-  vcf_sv <- prepare_svclone_output(svclone_file, vcf_template, genome="GRCh37")
+  vcf_sv = prepare_svclone_output(svclone_file, vcf_template, genome="GRCh37")
 }
 
-purityPloidy <- read.table(purity_file, header=TRUE, sep="\t")
+purityPloidy = read.table(purity_file, header=TRUE, sep="\t")
 purity = purityPloidy$purity[purityPloidy$samplename==samplename]
 ploidy = purityPloidy$ploidy[purityPloidy$samplename==samplename]
 if ("ccf" %in% colnames(elementMetadata(bb))) {
@@ -130,13 +155,9 @@ if (max(clusters$cluster) > nrow(clusters)) {
 	# dpc_assign_input = dpc_assign
 	for (i in 1:nrow(clusters)) {
 		clusterid = clusters$cluster[i]
-		# dpc_assign$cluster[dpc_assign_input$cluster==clusterid] = i
 		clusters$cluster[i] = i
 	}
 }	
-
-#' Merge clusters if requested
-# if (merge_clusters) { clusters = mergeClusters(clusters) }
 
 #' Calculate CCF for each cluster
 clusters$ccf = clusters$proportion/purity
@@ -149,10 +170,7 @@ if (merge_clusters & nrow(clusters) > 1) { clusters = mergeClustersByMutreadDiff
 ########################################################################
 #' Assign using Moritz' approach
 if (!do_load) {
-	#vcf_snv = vcf_snv[seqnames(vcf_snv) %in% select_chroms,]
 	MCN <- computeMutCn(vcf_snv, bb, clusters, purity, gender=sex, isWgd=is_wgd, rho=rho_snv, n.boot=0, xmin=xmin, deltaFreq=deltaFreq)
-	#save(MCN, file=paste0("mcn_", ident, ".RData"))
-	#q(save="no")
 	# Save priors for mutation copy number - commented out because priors are not pre-calculated when there are no SNVs on a segment, which yields no probabilities for indels and SVs on such a segment
 	#bb$timing_param <- MCN$P
 	if (!is.null(vcf_indel)) {
@@ -202,26 +220,19 @@ snv_timing = data.frame(chromosome=as.character(seqnames(vcf_snv)),
                         timing=classifyMutations(MCN$D),
                         chromosome2=rep(NA, nrow(MCN$D)),
                         position2=rep(NA, nrow(MCN$D)),
-			svid=rep(NA, nrow(MCN$D)),
-			prob_clonal_early=MCN$D$pGain,
-			prob_clonal_late=MCN$D$pSingle,
-			prob_subclonal=MCN$D$pSub,
+                        svid=rep(NA, nrow(MCN$D)),
+                        prob_clonal_early=MCN$D$pGain,
+                        prob_clonal_late=MCN$D$pSingle,
+                        prob_subclonal=MCN$D$pSub,
                         stringsAsFactors=F)
 
-# snv_output = data.frame(chromosome=as.character(seqnames(vcf_snv)),
-#                         position=as.numeric(start(vcf_snv)),
-#                         mut_type=rep("SNV", nrow(MCN$D)),
-#                         ccf=snv_mtimer$clusters$ccf[match(snv_mtimer$plot_data$cluster, snv_mtimer$clusters$cluster)],
-#                         chromosome2=rep(NA, nrow(MCN$D)),
-#                         position2=rep(NA, nrow(MCN$D)),
-#                         stringsAsFactors=F)
 snv_output = data.frame(chromosome=final_pcawg11_output$snv_assignments_prob$chr,
                         position=final_pcawg11_output$snv_assignments_prob$pos,
                         mut_type=rep("SNV", nrow(MCN$D)),
                         final_pcawg11_output$snv_assignments_prob[, grepl("cluster", colnames(final_pcawg11_output$snv_assignments_prob)), drop=F],
                         chromosome2=rep(NA, nrow(MCN$D)),
                         position2=rep(NA, nrow(MCN$D)),
-			svid=rep(NA, nrow(MCN$D)),
+                        svid=rep(NA, nrow(MCN$D)),
                         stringsAsFactors=F)
 if (!is.null(vcf_indel)) {
 indel_timing = data.frame(chromosome=as.character(seqnames(vcf_indel)),
@@ -230,10 +241,10 @@ indel_timing = data.frame(chromosome=as.character(seqnames(vcf_indel)),
                           timing=classifyMutations(MCN_indel$D),
                           chromosome2=rep(NA, nrow(MCN_indel$D)),
                           position2=rep(NA, nrow(MCN_indel$D)),
-			  svid=rep(NA, nrow(MCN_indel$D)),
-			  prob_clonal_early=MCN_indel$D$pGain,
-			  prob_clonal_late=MCN_indel$D$pSingle,
-			  prob_subclonal=MCN_indel$D$pSub,
+                          svid=rep(NA, nrow(MCN_indel$D)),
+                          prob_clonal_early=MCN_indel$D$pGain,
+                          prob_clonal_late=MCN_indel$D$pSingle,
+                          prob_subclonal=MCN_indel$D$pSub,
                           stringsAsFactors=F)
 
 indel_output = data.frame(chromosome=final_pcawg11_output$indel_assignments_prob$chr,
@@ -242,7 +253,7 @@ indel_output = data.frame(chromosome=final_pcawg11_output$indel_assignments_prob
                           final_pcawg11_output$indel_assignments_prob[, grepl("cluster", colnames(final_pcawg11_output$indel_assignments_prob)), drop=F],
                           chromosome2=rep(NA, nrow(MCN_indel$D)),
                           position2=rep(NA, nrow(MCN_indel$D)),
-			  svid=rep(NA, nrow(MCN_indel$D)),
+                          svid=rep(NA, nrow(MCN_indel$D)),
                           stringsAsFactors=F)
 } else {
   indel_timing = data.frame()
@@ -257,10 +268,10 @@ if (!is.null(vcf_sv)) {
                          timing=classifyMutations(MCN_sv$D),
                          chromosome2=info(vcf_sv)$chr2,
                          position2=info(vcf_sv)$pos2,
-			 svid=NA,
-			 prob_clonal_early=MCN_sv$D$pGain,
-			 prob_clonal_late=MCN_sv$D$pSingle,
-			 prob_subclonal=MCN_sv$D$pSub,
+                         svid=NA,
+                         prob_clonal_early=MCN_sv$D$pGain,
+                         prob_clonal_late=MCN_sv$D$pSingle,
+                         prob_subclonal=MCN_sv$D$pSub,
                          stringsAsFactors=F)
 
   # Remap SVs into their correct position
@@ -276,7 +287,7 @@ if (!is.null(vcf_sv)) {
                          final_pcawg11_output$sv_assignments_prob[, grepl("cluster", colnames(final_pcawg11_output$sv_assignments_prob)), drop=F],
                          chromosome2=final_pcawg11_output$sv_assignments_prob$chr2,
                          position2=final_pcawg11_output$sv_assignments_prob$pos2,
-			 svid=final_pcawg11_output$sv_assignments$id,
+                         svid=final_pcawg11_output$sv_assignments$id,
                          stringsAsFactors=F)
 
 	print(head(snv_timing))
