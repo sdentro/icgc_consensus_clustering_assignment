@@ -119,6 +119,10 @@ clusters = read.table(clust_file, header=TRUE, sep="\t")
 # sort the clusters and renumber
 clusters = clusters[with(clusters, order(proportion, decreasing=T)),]
 clusters$cluster = 1:nrow(clusters)
+# not al pipeliones adhere to the prescribed standard
+if (any(colnames(clusters)=="n_ssm")) {
+  colnames(clusters)[colnames(clusters)=="n_ssm"] = "n_ssms"
+}
 
 vcf_snv = readVcf(snv_vcf_file, genome="GRCh37")
 if (is.null(indel_vcf_file)) {
@@ -170,6 +174,7 @@ if (merge_clusters & nrow(clusters) > 1) { clusters = mergeClustersByMutreadDiff
 ########################################################################
 #' Assign using Moritz' approach
 if (!do_load) {
+  #save.image("test.RData")
 	MCN <- computeMutCn(vcf_snv, bb, clusters, purity, gender=sex, isWgd=is_wgd, rho=rho_snv, n.boot=0, xmin=xmin, deltaFreq=deltaFreq)
 	# Save priors for mutation copy number - commented out because priors are not pre-calculated when there are no SNVs on a segment, which yields no probabilities for indels and SVs on such a segment
 	#bb$timing_param <- MCN$P
