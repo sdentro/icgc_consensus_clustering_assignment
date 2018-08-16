@@ -98,7 +98,9 @@ vcf_template = file.path(libpath, "template_icgc_consensus.vcf")
 #purity_file = "dp/20161213_vanloo_wedge_consSNV_prelimConsCNAallStar/1_purity_ploidy/purity_ploidy.txt"
 
 #source(file.path(libpath, "MutationTime.R"))
+##UNCOMMENT
 source("~/repo/MutationTime.R/MutationTime.R")
+#source("~/repo/icgc_consensus_clustering_assignment//MutationTime.R")
 source(file.path(libpath, "util.R"))
 library(ggplot2)
 library(gridExtra)
@@ -113,8 +115,17 @@ q = 0.05
 ########################################################################
 # Parse the input
 ########################################################################
+#UNCOMMENT
 bb = loadBB(bb_file, round_subclones=round_subclonal_cna, remove_subclones=remove_subclones)
+#bb = loadBB(bb_file)
 clusters = read.table(clust_file, header=TRUE, sep="\t")
+
+if (!any(colnames(clusters)=="proportion")) {
+	if (!any(colnames(clusters)=="ccf")) { print("Structure file requires at least proportion or ccf column"); q(save="no") }
+	purityPloidy = read.table(purity_file, header=TRUE, sep="\t")
+	purity = purityPloidy$purity[purityPloidy$samplename==samplename]
+	clusters$proportion = clusters$ccf * purity
+}
 
 # sort the clusters and renumber
 clusters = clusters[with(clusters, order(proportion, decreasing=T)),]
