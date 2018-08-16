@@ -190,14 +190,18 @@ if (!do_load) {
 	# Save priors for mutation copy number - commented out because priors are not pre-calculated when there are no SNVs on a segment, which yields no probabilities for indels and SVs on such a segment
 	#bb$timing_param <- MCN$P
 	if (!is.null(vcf_indel)) {
-		MCN_indel <- computeMutCn(vcf_indel, bb, clusters, purity, gender=sex, isWgd=is_wgd, rho=rho_indel, n.boot=0, xmin=xmin, deltaFreq=deltaFreq)
+	  temp = clusters
+	  temp$n_ssms = estimate_cluster_size(clusters$ccf, vcf_indel, bb, purity, sex, is_wgd, rho_snv, xmin, deltaFreq)
+		MCN_indel <- computeMutCn(vcf_indel, bb, temp, purity, gender=sex, isWgd=is_wgd, rho=rho_indel, n.boot=0, xmin=xmin, deltaFreq=deltaFreq)
 	}
 } else {
 	bb$timing_param <- MCN$P
 }
 
 if (!is.null(vcf_sv)) {
-  MCN_sv <- computeMutCn(vcf_sv, bb, clusters, purity, gender=sex, isWgd=is_wgd, rho=rho_sv, n.boot=0, xmin=xmin, deltaFreq=deltaFreq)
+  temp = clusters
+  temp$n_ssms = estimate_cluster_size(clusters$ccf, vcf_sv, bb, purity, sex, is_wgd, rho_snv, xmin, deltaFreq)
+  MCN_sv <- computeMutCn(vcf_sv, bb, temp, purity, gender=sex, isWgd=is_wgd, rho=rho_sv, n.boot=0, xmin=xmin, deltaFreq=deltaFreq)
 }
 
 snv_mtimer = assign_mtimer(MCN, clusters, purity)

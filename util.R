@@ -34,7 +34,7 @@ mutationCopyNumberToMutationBurden = function(copyNumber, totalCopyNumber, cellu
   burden[burden>0.999999] = 0.999999
   return(burden)	
 }
-
+#sim06rlqf
 
 ########################################################################
 # Parsers
@@ -644,4 +644,77 @@ write_output_summary_table = function(structure_df, outdir, samplename, project,
                              clonal=NA,
                              subclonal=NA)
   write.table(summary_table, file=file.path(outdir, paste0(samplename, "_summary_table.txt")), row.names=F, sep="\t", quote=F)
+}
+
+#' Estimate cluster sizes from cluster locations and provided mutation data
+#' @param cluster_locations Locations of clusters in CCF
+#' @param vcf_snv A VCF file in ICGC PCAWG consensus format, read in
+#' @param bb GenomicRanges object, output of loadBB, a loaded in segments file
+#' @param purity The tumour purity estimate
+#' @param sex Either male or female
+#' @param is_wgd Specify TRUE is the tumour is estimated to have undergone a whole genome doubling
+#' @param rho_snv Overdispersion parameter to be used when fitting beta-binomial
+#' @param xmin Power adjustment parameter, higher values will make it more likely mutations are assigned to smaller clusters
+#' @param deltaFreq Distance in CP to match mutation clusters
+#' @param max_iters Maximum number of iterations of EM to allow (Default: 10)
+#' @param min_snvs_assign_change Minimum number of SNVs to change between two iterations, fewer than this number stops EM (Default: 10)
+#' @return A vector with the estimated cluster locations
+estimate_cluster_size = function(cluster_locations, vcf_snv, bb, purity, sex, is_wgd, rho_snv, xmin, deltaFreq, max_iters=10, min_snvs_assign_change=10) {
+  
+  n_snvs = nrow(dpin)
+  clusters = data.frame(cluster=1:length(cluster_locations), location=cluster_locations, n_ssms=NA)
+  clusters$proportion = clusters$location * purity
+  probs = data.frame(prob_cluster_1=rep(NA, n_snvs),
+                     prob_cluster_2=rep(NA, n_snvs))
+  
+  alt_count = getAltCount(vcf_snv)
+  wt_count = getTumorDepth(vcf_snv)-alt_count
+  
+  # ad-hoc establishment of multiplicity values to calculate starting probabilities
+  overlap = findOverlaps(vcf_snv, bb)
+  total_cn = bb$total_cn[subjectHits(overlap)]
+  mcn = mutationBurdenToMutationCopyNumber(alt_count/(alt_count+wt_count), total_cn, purity)
+  mult = round(mcn)
+  mult[mult==0] = 1
+  
+  # assign to most likely cluster without cluster sizes
+  counter = 1
+  assignments = list()
+  cluster_sizes = list()
+  for (i in 1:nrow(dpin)) {
+    res = getClustLL(NA, mult[i], total_cn[i], alt_count[i], wt_count[i], clusters$location, purity)
+    # res = dtrbetabinom(dpin$mut.count[i],dpin$mut.count[i]+dpin$WT.count[i], ifelse(clusters$location==1, 1-.Machine$double.eps, clusters$location), rho=0, xmin=pmin(dpin$mut.count[i],0))# + .Machine$double.eps), ncol=length(whichStates)
+    res = res-max(res)
+    res = exp(res)
+    res = res / sum(res)
+    probs[i,] = res
+  }
+  assignments[[counter]] = probs
+  clusters$n_ssms = colSums(probs, na.rm=T)
+  cluster_sizes[[counter]] = clusters
+  counter = counter+1
+  
+  running = T
+  while(running) {
+    
+    # e step - assign using current cluster sizes
+    MCN <- computeMutCn(vcf_snv, bb, cluster_sizes[[counter-1]], purity, gender=sex, isWgd=is_wgd, rho=rho_snv, n.boot=0, xmin=xmin, deltaFreq=deltaFreq)
+    probs = get_probs(cluster_sizes[[counter-1]], MCN, vcf_snv)[,3:(nrow(cluster_sizes[[counter-1]])+2)]
+    assignments[[counter]] = probs
+    
+    # m step - update cluster sizes
+    clusters$n_ssms = colSums(probs, na.rm=T)
+    cluster_sizes[[counter]] = clusters
+    
+    # check stop condition
+    if (counter==max_iters | mean(abs(cluster_sizes[[counter-1]]$n_ssms - cluster_sizes[[counter]]$n_ssms)) < min_snvs_assign_change) {
+      if (counter==max_iters) { print(paste0("Reached max iters for sample ", samplename)) }
+      running = F
+    } else {
+      assignments[[counter]] = probs
+      cluster_sizes[[counter]] = clusters
+      counter = counter+1
+    }
+  }
+  return(cluster_sizes[[counter-1]]$n_ssms)
 }
