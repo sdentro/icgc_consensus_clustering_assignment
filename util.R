@@ -122,6 +122,20 @@ getClustLL = function(data, cluster_locations, purity) {
   return(matrix(assignment_ll, ncol=length(cluster_locations)))
 }
 
+#' Calculate binomial probability of each mutation belonging in each cluster
+#' 
+#' @param data
+#' @param cluster_locations
+#' @param purity The sample purity
+#' 
+getClustLL2 = function(vaf, multiplicity, total_cn, mutcount, wtcount, cluster_locations, purity) {
+  assignment_ll = sapply(1:length(cluster_locations), function(c) {
+    mutBurdens = mutationCopyNumberToMutationBurden(cluster_locations[c] * multiplicity, total_cn, purity, rep(2, length(mutcount)))
+    mutcount*log(mutBurdens) + wtcount*log(1-mutBurdens)
+  })
+  return(matrix(assignment_ll, ncol=length(cluster_locations)))
+}
+
 #' Assign mutations to the cluster with highest binomial likelihood
 #' 
 #' @param MCN Output from computeMutCn
@@ -682,7 +696,7 @@ estimate_cluster_size = function(cluster_locations, vcf_snv, bb, purity, sex, is
   assignments = list()
   cluster_sizes = list()
   for (i in 1:n_snvs) {
-    res = getClustLL(NA, mult[i], total_cn[i], alt_count[i], wt_count[i], clusters$location, purity)
+    res = getClustLL2(NA, mult[i], total_cn[i], alt_count[i], wt_count[i], clusters$location, purity)
     # res = dtrbetabinom(dpin$mut.count[i],dpin$mut.count[i]+dpin$WT.count[i], ifelse(clusters$location==1, 1-.Machine$double.eps, clusters$location), rho=0, xmin=pmin(dpin$mut.count[i],0))# + .Machine$double.eps), ncol=length(whichStates)
     res = res-max(res)
     res = exp(res)
