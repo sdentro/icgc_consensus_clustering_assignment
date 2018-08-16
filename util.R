@@ -661,7 +661,7 @@ write_output_summary_table = function(structure_df, outdir, samplename, project,
 #' @return A vector with the estimated cluster locations
 estimate_cluster_size = function(cluster_locations, vcf_snv, bb, purity, sex, is_wgd, rho_snv, xmin, deltaFreq, max_iters=10, min_snvs_assign_change=10) {
   
-  n_snvs = nrow(dpin)
+  n_snvs = nrow(vcf_snv)
   clusters = data.frame(cluster=1:length(cluster_locations), location=cluster_locations, n_ssms=NA)
   clusters$proportion = clusters$location * purity
   probs = data.frame(prob_cluster_1=rep(NA, n_snvs),
@@ -681,7 +681,7 @@ estimate_cluster_size = function(cluster_locations, vcf_snv, bb, purity, sex, is
   counter = 1
   assignments = list()
   cluster_sizes = list()
-  for (i in 1:nrow(dpin)) {
+  for (i in 1:nrow(vcf_snv)) {
     res = getClustLL(NA, mult[i], total_cn[i], alt_count[i], wt_count[i], clusters$location, purity)
     # res = dtrbetabinom(dpin$mut.count[i],dpin$mut.count[i]+dpin$WT.count[i], ifelse(clusters$location==1, 1-.Machine$double.eps, clusters$location), rho=0, xmin=pmin(dpin$mut.count[i],0))# + .Machine$double.eps), ncol=length(whichStates)
     res = res-max(res)
