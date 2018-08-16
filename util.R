@@ -89,9 +89,11 @@ prepare_svclone_output = function(svclone_file, vcf_template, genome) {
   for (i in 1:nrow(dat)) {
     # Preferred copy number
     if (dat$preferred_side[i]==0) {
-      sv_chrom_pos = rbind(sv_chrom_pos, data.frame(chrom=as.character(dat$chr1[i]), pos=dat$pos1[i]))
+      # sv_chrom_pos = rbind(sv_chrom_pos, data.frame(chrom=as.character(dat$chr1[i]), pos=dat$pos1[i]))
+      sv_chrom_pos = rbind(sv_chrom_pos, data.frame(chrom=as.character(dat$chr1[i]), pos=dat$original_pos1[i]))
     } else {
-      sv_chrom_pos = rbind(sv_chrom_pos, data.frame(chrom=as.character(dat$chr2[i]), pos=dat$pos2[i]))
+      # sv_chrom_pos = rbind(sv_chrom_pos, data.frame(chrom=as.character(dat$chr2[i]), pos=dat$pos2[i]))
+      sv_chrom_pos = rbind(sv_chrom_pos, data.frame(chrom=as.character(dat$chr2[i]), pos=dat$original_pos2[i]))
     }
   }
   

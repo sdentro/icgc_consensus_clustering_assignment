@@ -145,6 +145,7 @@ if (is.null(svclone_file) | is.null(svclone_file)) {
   vcf_sv = NULL
 } else {
   vcf_sv = prepare_svclone_output(svclone_file, vcf_template, genome="GRCh37")
+  writeVcf(vcf_sv, filename="test.vcf")
 }
 
 purityPloidy = read.table(purity_file, header=TRUE, sep="\t")
@@ -229,6 +230,7 @@ if (!is.null(vcf_sv)) {
 ########################################################################
 # Obtain final PCAWG-11 output
 ########################################################################
+save.image(file="debug.RData")
 final_pcawg11_output = pcawg11_output(snv_mtimer, indel_mtimer, sv_mtimer, MCN, MCN_indel, MCN_sv, vcf_sv, sv_vcf_file, svid_map_file)
 
 ########################################################################
