@@ -732,3 +732,28 @@ estimate_cluster_size = function(cluster_locations, vcf_snv, bb, purity, sex, is
   }
   return(cluster_sizes[[counter-1]]$n_ssms)
 }
+
+#' Obtain a mutation to cluster assignment probability table
+get_probs = function(final_clusters, MCN, vcf_snv) {
+  
+  n_subclones = nrow(final_clusters)-1
+  if (n_subclones==0) {
+    r = t(t(sapply(MCN$D$pAllSubclones, function(x) 0)))
+  } else if (n_subclones==1) {
+    r = matrix(unlist(sapply(MCN$D$pAllSubclones, function(x) if(length(x)!=0) x else rep(NA, n_subclones))))
+  } else {
+    r = matrix(unlist(lapply(MCN$D$pAllSubclones, function(x) if (is.null(x)) { rep(NA, n_subclones) } else { x })), ncol=n_subclones, byrow=T)
+  }
+  snv_assignments_prob = data.frame(chr=as.character(seqnames(vcf_snv)), 
+                                    pos=as.numeric(start(vcf_snv)), 
+                                    clone=1-rowSums(r), 
+                                    r, stringsAsFactors=F)
+  
+  if (n_subclones==0) {
+    snv_assignments_prob = snv_assignments_prob[,1:3]
+  }
+  
+  # set cluster number in the header
+  colnames(snv_assignments_prob) = c("chr", "pos", paste0("cluster_", final_clusters$cluster))
+  return(snv_assignments_prob)
+}
