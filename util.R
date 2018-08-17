@@ -525,7 +525,7 @@ prepare_svclone_output = function(svclone_file, vcf_template, genome, take_prefe
   v <- readVcf(snv_vcf_file, genome=genome)
   d = data.frame(chromosome=sv_chrom_pos$chrom, position=sv_chrom_pos$pos)
   d.gr = makeGRangesFromDataFrame(d, start.field="position", end.field="position")
-  d.info = DataFrame(t_alt_count=mutCount, t_ref_count=WTCount, chr1=dat$chr1, pos1=dat$pos1, chr2=dat$chr2, pos2=dat$pos2, id=dat$original_ID, major_cn=major_cn, minor_cn=minor_cn)
+  d.info = DataFrame(t_alt_count=mutCount, t_ref_count=WTCount, chr1=dat$chr1, pos1=dat$pos1, chr2=dat$chr2, pos2=dat$pos2, id=ids, major_cn=major_cn, minor_cn=minor_cn)
   d.v = VCF(rowRanges=d.gr, exptData=metadata(v), geno=geno(v), fixed=rep(fixed(v)[1,], nrow(d)), colData=colData(v), info=d.info)
   return(d.v)
 }
