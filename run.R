@@ -321,7 +321,7 @@ if (!is.null(vcf_sv)) {
                            timing=classifyMutations(MCN_sv_alt$D),
                            chromosome2=info(vcf_sv_alt)$chr2,
                            position2=info(vcf_sv_alt)$pos2,
-                           svid=NA,
+                           svid=info(vcf_sv_alt)$id,
                            prob_clonal_early=MCN_sv_alt$D$pGain,
                            prob_clonal_late=MCN_sv_alt$D$pSingle,
                            prob_subclonal=MCN_sv_alt$D$pSub,
