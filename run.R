@@ -230,8 +230,7 @@ if (!is.null(vcf_sv)) {
 ########################################################################
 # Obtain final PCAWG-11 output
 ########################################################################
-save.image(file="debug.RData")
-final_pcawg11_output = pcawg11_output(snv_mtimer, indel_mtimer, sv_mtimer, MCN, MCN_indel, MCN_sv, vcf_sv, sv_vcf_file, svid_map_file)
+final_pcawg11_output = pcawg11_output(snv_mtimer, indel_mtimer, sv_mtimer, MCN, MCN_indel, MCN_sv, vcf_sv, sv_vcf_file)
 
 ########################################################################
 # Output to share with PCAWG
@@ -296,19 +295,31 @@ if (!is.null(vcf_sv)) {
                          prob_subclonal=MCN_sv$D$pSub,
                          stringsAsFactors=F)
 
+  # TODO: at this point only a single end is included, so will need to add the second end point here
+  # it may be worth while to add the SVID from the svclone vaf file into vcf_sv, for reference here
+  
   # Remap SVs into their correct position
-  res = remap_svs(sv_vcf_file, svid_map_file, final_pcawg11_output$sv_assignments, final_pcawg11_output$sv_assignments_prob, sv_timing)
+  res = remap_svs(sv_vcf_file, svclone_file, final_pcawg11_output$sv_assignments, final_pcawg11_output$sv_assignments_prob, sv_timing)
   final_pcawg11_output$sv_assignments = res$sv_assignments
   final_pcawg11_output$sv_assignments_prob = res$sv_assignments_prob
   sv_timing = res$sv_timing
-  sv_timing$svid = final_pcawg11_output$sv_assignments$id
+  # sv_timing$svid = final_pcawg11_output$sv_assignments$id
 
-  sv_output = data.frame(chromosome=final_pcawg11_output$sv_assignments_prob$chr,
-                         position=final_pcawg11_output$sv_assignments_prob$pos,
+  # sv_output = data.frame(chromosome=final_pcawg11_output$sv_assignments_prob$chr,
+  #                        position=final_pcawg11_output$sv_assignments_prob$pos,
+  #                        mut_type=rep("SV", nrow(final_pcawg11_output$sv_assignments_prob)),
+  #                        final_pcawg11_output$sv_assignments_prob[, grepl("cluster", colnames(final_pcawg11_output$sv_assignments_prob)), drop=F],
+  #                        chromosome2=final_pcawg11_output$sv_assignments_prob$chr2,
+  #                        position2=final_pcawg11_output$sv_assignments_prob$pos2,
+  #                        svid=final_pcawg11_output$sv_assignments$id,
+  #                        stringsAsFactors=F)
+  
+  sv_output = data.frame(chromosome=final_pcawg11_output$sv_assignments$chr, #info(vcf_sv)$chr1,
+                         position=final_pcawg11_output$sv_assignments$pos, #info(vcf_sv)$pos1,
                          mut_type=rep("SV", nrow(final_pcawg11_output$sv_assignments_prob)),
                          final_pcawg11_output$sv_assignments_prob[, grepl("cluster", colnames(final_pcawg11_output$sv_assignments_prob)), drop=F],
-                         chromosome2=final_pcawg11_output$sv_assignments_prob$chr2,
-                         position2=final_pcawg11_output$sv_assignments_prob$pos2,
+                         chromosome2=final_pcawg11_output$sv_assignments$chr2, #info(vcf_sv)$chr2,
+                         position2=final_pcawg11_output$sv_assignments$pos2, #info(vcf_sv)$pos2,
                          svid=final_pcawg11_output$sv_assignments$id,
                          stringsAsFactors=F)
 

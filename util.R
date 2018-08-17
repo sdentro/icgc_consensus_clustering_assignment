@@ -101,9 +101,8 @@ prepare_svclone_output = function(svclone_file, vcf_template, genome) {
   v <- readVcf(snv_vcf_file, genome=genome)
   d = data.frame(chromosome=sv_chrom_pos$chrom, position=sv_chrom_pos$pos)
   d.gr = makeGRangesFromDataFrame(d, start.field="position", end.field="position")
-  d.info = DataFrame(t_alt_count=mutCount, t_ref_count=WTCount, chr1=dat$chr1, pos1=dat$pos1, chr2=dat$chr2, pos2=dat$pos2)
+  d.info = DataFrame(t_alt_count=mutCount, t_ref_count=WTCount, chr1=dat$chr1, pos1=dat$pos1, chr2=dat$chr2, pos2=dat$pos2, id=dat$original_ID)
   d.v = VCF(rowRanges=d.gr, exptData=metadata(v), geno=geno(v), fixed=rep(fixed(v)[1,], nrow(d)), colData=colData(v), info=d.info)
-  
   return(d.v)
 }
 
@@ -320,7 +319,7 @@ get_summary_table_entry = function(samplename, summary_table, cluster_info, snv_
 # PCAWG11 Calibration format
 ########################################################################
 
-pcawg11_output = function(snv_mtimer, indel_mtimer, sv_mtimer, MCN, MCN_indel, MCN_sv, vcf_sv, consensus_vcf_file, svid_map_file) {
+pcawg11_output = function(snv_mtimer, indel_mtimer, sv_mtimer, MCN, MCN_indel, MCN_sv, vcf_sv, consensus_vcf_file) {
   # Cluster locations
   final_clusters = snv_mtimer$clusters
   
@@ -447,9 +446,9 @@ pcawg11_output = function(snv_mtimer, indel_mtimer, sv_mtimer, MCN, MCN_indel, M
 #' @param sv_assignments
 #' @param sv_assignments_prob
 #' @return A list with two data.frames, one with hard assignments and one with probabilities. Every consensus SV is reported with their consensus location
-remap_svs = function(consensus_vcf_file, svid_map_file, sv_assignments, sv_assignments_prob, sv_timing) {
+remap_svs = function(consensus_vcf_file, svclone_file, sv_assignments, sv_assignments_prob, sv_timing) {
   cons_sv = readVcf(consensus_vcf_file, "GRCh37")
-  svmap = read.table(svid_map_file, header=T, stringsAsFactors=F)
+  svclone_dat = read.table(svclone_file, header=T, stringsAsFactors=F, sep="\t")
   
   #' Helper function to split a string by multiple characters
   strsplits <- function(x, splits, ...) {
@@ -469,10 +468,10 @@ remap_svs = function(consensus_vcf_file, svid_map_file, sv_assignments, sv_assig
                          timing=NA, 
                          chromosome2=all_sv_data$chr2,
                          position2=all_sv_data$pos2, 
-			 svid=NA,
-			 prob_clonal_early=NA,
-			 prob_clonal_late=NA,
-			 prob_subclonal=NA,
+                         svid=all_sv_data$id,
+                         prob_clonal_early=NA,
+                         prob_clonal_late=NA,
+                         prob_subclonal=NA,
                          stringsAsFactors=F)
   
   # add extra columns for annotations
@@ -506,11 +505,11 @@ remap_svs = function(consensus_vcf_file, svid_map_file, sv_assignments, sv_assig
 		  row_mapid = all_sv_data$id[i]
 	  }
 
-	  svmap_index = match(row_mapid, svmap$original_ID)
+	  svmap_index = match(row_mapid, svclone_dat$original_ID)
 	  if (!is.na(svmap_index)) {
 
-		  match_1 = sv_assignments$chr==svmap$chr1[svmap_index] & sv_assignments$pos==svmap$pos1[svmap_index] & sv_assignments$chr2==svmap$chr2[svmap_index] & sv_assignments$pos2==svmap$pos2[svmap_index]
-		  match_2 = sv_assignments$chr==svmap$chr2[svmap_index] & sv_assignments$pos==svmap$pos2[svmap_index] & sv_assignments$chr2==svmap$chr1[svmap_index] & sv_assignments$pos2==svmap$pos1[svmap_index]
+		  match_1 = sv_assignments$chr==svclone_dat$chr1[svmap_index] & sv_assignments$pos==svclone_dat$pos1[svmap_index] & sv_assignments$chr2==svclone_dat$chr2[svmap_index] & sv_assignments$pos2==svclone_dat$pos2[svmap_index]
+		  match_2 = sv_assignments$chr==svclone_dat$chr2[svmap_index] & sv_assignments$pos==svclone_dat$pos2[svmap_index] & sv_assignments$chr2==svclone_dat$chr1[svmap_index] & sv_assignments$pos2==svclone_dat$pos1[svmap_index]
 
 		  if (any(match_1) & !any(match_2)) {
 			  selection = match_1
@@ -526,19 +525,19 @@ remap_svs = function(consensus_vcf_file, svid_map_file, sv_assignments, sv_assig
 			  	all_sv_data$cluster[i] = as.character(sv_assignments$cluster[assign_index])
 			  	all_sv_data_probs[i, grepl("cluster", colnames(all_sv_data_probs))] = sv_assignments_prob[assign_index, grepl("cluster", colnames(sv_assignments_prob))]
 			  	all_sv_timing$timing[i] = as.character(sv_timing$timing[assign_index])
-				all_sv_timing$prob_clonal_early[i] = sv_timing$prob_clonal_early[assign_index]
-				all_sv_timing$prob_clonal_late[i] = sv_timing$prob_clonal_late[assign_index]
-				all_sv_timing$prob_subclonal[i] = sv_timing$prob_subclonal[assign_index]
+  				all_sv_timing$prob_clonal_early[i] = sv_timing$prob_clonal_early[assign_index]
+  				all_sv_timing$prob_clonal_late[i] = sv_timing$prob_clonal_late[assign_index]
+  				all_sv_timing$prob_subclonal[i] = sv_timing$prob_subclonal[assign_index]
 			  } else {
 				# in this scenario multiple chromosome/position entries mapped to this entry in all_sv_data, we'll keep this ambiguous therefore as we cannot map the probabilities uniquely
-				print("Found multiple mapping entries")
+				  print("Found multiple mapping entries")
 			  	print(sv_assignments[assign_index,])
-				all_sv_data$cluster[i] = NA
+				  all_sv_data$cluster[i] = NA
 			  	all_sv_data_probs[i, grepl("cluster", colnames(all_sv_data_probs))] = NA
-				all_sv_timing$timing[i] = NA
-				all_sv_timing$prob_clonal_early[i] = NA
-				all_sv_timing$prob_clonal_late[i] = NA
-				all_sv_timing$prob_subclonal[i] = NA
+  				all_sv_timing$timing[i] = NA
+  				all_sv_timing$prob_clonal_early[i] = NA
+  				all_sv_timing$prob_clonal_late[i] = NA
+  				all_sv_timing$prob_subclonal[i] = NA
 			  }
 		  }
 	  }
