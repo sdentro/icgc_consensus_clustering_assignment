@@ -34,77 +34,6 @@ mutationCopyNumberToMutationBurden = function(copyNumber, totalCopyNumber, cellu
   burden[burden>0.999999] = 0.999999
   return(burden)	
 }
-#sim06rlqf
-
-########################################################################
-# Parsers
-########################################################################
-
-#' Obtain for every SV altCount, tumDepth and majorCN
-#' 
-#' @param cn_assignment_file An SVclone SV to copy number assignment file
-#' @param vafs_file An SVclone file reporting VAFs per SV
-#' @return A data.frame with altCount, tumDepth and majorCN columns
-#' 
-#' @author sd11
-#' @export
-parse_sv_data = function(cn_assignment_file, vafs_file) {
-  cn_assignment = read.table(cn_assignment_file, header=T, stringsAsFactors=F, sep="\t")
-  vafs = read.table(vafs_file, header=T, stringsAsFactors=F, sep="\t")
-  
-  parse_entry = function(cn_assignment, vafs, i) {
-    vaf = vafs$adjusted_VAF[i]
-    pos1_cn = cn_assignment$pos1_bb_CN[i]
-    pos2_cn = cn_assignment$pos2_bb_CN[i]
-    total_cn = as.numeric(unlist(stringr::str_split(ifelse(pos1_cn!="", pos1_cn, pos2_cn), ","))[1])
-    depth = cn_assignment$depth[i]
-    # sv_data = rbind(sv_data, data.frame(altCount=vaf*depth, tumDepth=depth, majorCN=total_cn))
-    return(data.frame(altCount=vaf*depth, tumDepth=depth, majorCN=total_cn))
-  }
-  
-  res = lapply(1:nrow(vafs), parse_entry, cn_assignment=cn_assignment, vafs=vafs)
-  return(as.data.frame(do.call(rbind, res)))
-}
-
-#' Transform the SVclone raw data into a vcf object
-#' 
-#' @param svclone_file SVclone vaf file with copy number mapping
-#' @param vcf_template Path to a vcf template file
-#' @param genome The reference genome to pass to readVcf
-#' 
-#' @return A basic vcf file with chromosome/position according to the SVclone
-#' preferred mapping (take the end that corresponds to the one mapped to copy
-#' number) and t_alt_count and t_ref_count filled in according to the given
-#' adjusted support and depth. For convenience the original chr1/pos1 and chr2/pos2
-#' columns are also provided.
-#' @author sd11
-prepare_svclone_output = function(svclone_file, vcf_template, genome) {
-  dat = read.table(svclone_file, header=T, stringsAsFactors=F, sep="\t")
-  
-  mutCount = dat$adjusted_support
-  WTCount = dat$adjusted_depth-dat$adjusted_support
-  
-  #' Select the preferred SV end from SVclone
-  sv_chrom_pos = data.frame()
-  for (i in 1:nrow(dat)) {
-    # Preferred copy number
-    if (dat$preferred_side[i]==0) {
-      # sv_chrom_pos = rbind(sv_chrom_pos, data.frame(chrom=as.character(dat$chr1[i]), pos=dat$pos1[i]))
-      sv_chrom_pos = rbind(sv_chrom_pos, data.frame(chrom=as.character(dat$chr1[i]), pos=dat$original_pos1[i]))
-    } else {
-      # sv_chrom_pos = rbind(sv_chrom_pos, data.frame(chrom=as.character(dat$chr2[i]), pos=dat$pos2[i]))
-      sv_chrom_pos = rbind(sv_chrom_pos, data.frame(chrom=as.character(dat$chr2[i]), pos=dat$original_pos2[i]))
-    }
-  }
-  
-  # Now push this into a VCF format with just alt and ref counts
-  v <- readVcf(snv_vcf_file, genome=genome)
-  d = data.frame(chromosome=sv_chrom_pos$chrom, position=sv_chrom_pos$pos)
-  d.gr = makeGRangesFromDataFrame(d, start.field="position", end.field="position")
-  d.info = DataFrame(t_alt_count=mutCount, t_ref_count=WTCount, chr1=dat$chr1, pos1=dat$pos1, chr2=dat$chr2, pos2=dat$pos2, id=dat$original_ID)
-  d.v = VCF(rowRanges=d.gr, exptData=metadata(v), geno=geno(v), fixed=rep(fixed(v)[1,], nrow(d)), colData=colData(v), info=d.info)
-  return(d.v)
-}
 
 ########################################################################
 # Mutation Assignment
@@ -438,6 +367,93 @@ pcawg11_output = function(snv_mtimer, indel_mtimer, sv_mtimer, MCN, MCN_indel, M
               snv_assignments_prob=snv_assignments_prob,
               indel_assignments_prob=indel_assignments_prob,
               sv_assignments_prob=sv_assignments_prob))
+}
+
+
+########################################################################
+# Structural variants
+########################################################################
+
+#' Obtain for every SV altCount, tumDepth and majorCN
+#' 
+#' @param cn_assignment_file An SVclone SV to copy number assignment file
+#' @param vafs_file An SVclone file reporting VAFs per SV
+#' @return A data.frame with altCount, tumDepth and majorCN columns
+#' 
+#' @author sd11
+#' @export
+parse_sv_data = function(cn_assignment_file, vafs_file) {
+  cn_assignment = read.table(cn_assignment_file, header=T, stringsAsFactors=F, sep="\t")
+  vafs = read.table(vafs_file, header=T, stringsAsFactors=F, sep="\t")
+  
+  parse_entry = function(cn_assignment, vafs, i) {
+    vaf = vafs$adjusted_VAF[i]
+    pos1_cn = cn_assignment$pos1_bb_CN[i]
+    pos2_cn = cn_assignment$pos2_bb_CN[i]
+    total_cn = as.numeric(unlist(stringr::str_split(ifelse(pos1_cn!="", pos1_cn, pos2_cn), ","))[1])
+    depth = cn_assignment$depth[i]
+    # sv_data = rbind(sv_data, data.frame(altCount=vaf*depth, tumDepth=depth, majorCN=total_cn))
+    return(data.frame(altCount=vaf*depth, tumDepth=depth, majorCN=total_cn))
+  }
+  
+  res = lapply(1:nrow(vafs), parse_entry, cn_assignment=cn_assignment, vafs=vafs)
+  return(as.data.frame(do.call(rbind, res)))
+}
+
+#' Transform the SVclone raw data into a vcf object
+#' 
+#' @param svclone_file SVclone vaf file with copy number mapping
+#' @param vcf_template Path to a vcf template file
+#' @param genome The reference genome to pass to readVcf
+#' @param take_preferred_breakpoint Supply TRUE when to use the preferred breakpoint, set to FALSE when the not preferred breakpoint is to be used (Default: TRUE)
+#' 
+#' @return A basic vcf file with chromosome/position according to the SVclone
+#' preferred mapping (take the end that corresponds to the one mapped to copy
+#' number) and t_alt_count and t_ref_count filled in according to the given
+#' adjusted support and depth. For convenience the original chr1/pos1 and chr2/pos2
+#' columns are also provided.
+#' @author sd11
+prepare_svclone_output = function(svclone_file, vcf_template, genome, take_preferred_breakpoint=T) {
+  dat = read.table(svclone_file, header=T, stringsAsFactors=F, sep="\t")
+  
+  mutCount = dat$adjusted_support
+  # WTCount = dat$adjusted_depth-dat$adjusted_support
+  WTCount = array(NA, length(mutCount))
+  major_cn = array(NA, length(mutCount))
+  minor_cn = array(NA, length(mutCount))
+  
+  #' Select the preferred SV end from SVclone
+  sv_chrom_pos = data.frame()
+  for (i in 1:nrow(dat)) {
+    # Preferred copy number
+    if ((dat$preferred_side[i]==0 & take_preferred_breakpoint) | (dat$preferred_side[i]==1 & !take_preferred_breakpoint)) {
+      # sv_chrom_pos = rbind(sv_chrom_pos, data.frame(chrom=as.character(dat$chr1[i]), pos=dat$pos1[i]))
+      
+      copy_number = as.numeric(unlist(stringr::str_split(dat$gtype1[i], ","))[1:2])
+      major_cn[i] = copy_number[1]
+      minor_cn[i] = copy_number[2]
+      
+      sv_chrom_pos = rbind(sv_chrom_pos, data.frame(chrom=as.character(dat$chr1[i]), pos=dat$original_pos1[i]))
+      WTCount[i] = dat$adjusted_norm1[i]
+    } else if ((dat$preferred_side[i]==1 & take_preferred_breakpoint) | (dat$preferred_side[i]==0 & !take_preferred_breakpoint)) {
+      # sv_chrom_pos = rbind(sv_chrom_pos, data.frame(chrom=as.character(dat$chr2[i]), pos=dat$pos2[i]))
+      
+      copy_number = as.numeric(unlist(stringr::str_split(dat$gtype2[i], ","))[1:2])
+      major_cn[i] = copy_number[1]
+      minor_cn[i] = copy_number[2]
+      
+      sv_chrom_pos = rbind(sv_chrom_pos, data.frame(chrom=as.character(dat$chr2[i]), pos=dat$original_pos2[i]))
+      WTCount[i] = dat$adjusted_norm2[i]
+    } 
+  }
+  
+  # Now push this into a VCF format with just alt and ref counts
+  v <- readVcf(snv_vcf_file, genome=genome)
+  d = data.frame(chromosome=sv_chrom_pos$chrom, position=sv_chrom_pos$pos)
+  d.gr = makeGRangesFromDataFrame(d, start.field="position", end.field="position")
+  d.info = DataFrame(t_alt_count=mutCount, t_ref_count=WTCount, chr1=dat$chr1, pos1=dat$pos1, chr2=dat$chr2, pos2=dat$pos2, id=dat$original_ID, major_cn=major_cn, minor_cn=minor_cn)
+  d.v = VCF(rowRanges=d.gr, exptData=metadata(v), geno=geno(v), fixed=rep(fixed(v)[1,], nrow(d)), colData=colData(v), info=d.info)
+  return(d.v)
 }
 
 #' Map SVs back onto their input location and merge with the existing assignments.

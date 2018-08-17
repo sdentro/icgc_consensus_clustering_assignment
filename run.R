@@ -200,9 +200,21 @@ if (!do_load) {
 }
 
 if (!is.null(vcf_sv)) {
-  temp = clusters
-  temp$n_ssms = estimate_cluster_size(clusters$ccf, vcf_sv, bb, purity, sex, is_wgd, rho_snv, xmin, deltaFreq)
-  MCN_sv <- computeMutCn(vcf_sv, bb, temp, purity, gender=sex, isWgd=is_wgd, rho=rho_sv, n.boot=0, xmin=xmin, deltaFreq=deltaFreq)
+  # SVclone has mapped SVs to particular copy number segments. This may not directly correspond to the
+  # segment at the exact base of the SV breakpoint. Here we therefore create a custom copy number profile
+  # where the copy number corresponds at the exact base of the SV.
+  temp_bb = rep(bb[1,c("total_cn", "major_cn", "minor_cn", "clonal_frequency")], length(vcf_sv))
+  for (i in 1:length(vcf_sv)) {
+    seqnames(temp_bb)[i] = seqnames(vcf_sv)[i]
+    start(temp_bb)[i] = end(temp_bb[i]) = start(vcf_sv)[i]
+    temp_bb$major_cn[i] = info(vcf_sv)$major_cn[i]
+    temp_bb$minor_cn[i] = info(vcf_sv)$minor_cn[i]
+    temp_bb$total_cn[i] = temp_bb$major_cn[i] + temp_bb$minor_cn[i]
+  }
+  
+  temp_clusters = clusters
+  temp_clusters$n_ssms = estimate_cluster_size(clusters$ccf, vcf_sv, bb, purity, sex, is_wgd, rho_snv, xmin, deltaFreq)
+  MCN_sv <- computeMutCn(vcf_sv, bb, temp_clusters, purity, gender=sex, isWgd=is_wgd, rho=rho_sv, n.boot=0, xmin=xmin, deltaFreq=deltaFreq)
 }
 
 snv_mtimer = assign_mtimer(MCN, clusters, purity)
