@@ -491,6 +491,7 @@ prepare_svclone_output = function(svclone_file, vcf_template, genome, take_prefe
   WTCount = array(NA, length(mutCount))
   major_cn = array(NA, length(mutCount))
   minor_cn = array(NA, length(mutCount))
+  ids = array(NA, length(mutCount))
   
   #' Select the preferred SV end from SVclone
   sv_chrom_pos = data.frame()
@@ -505,6 +506,7 @@ prepare_svclone_output = function(svclone_file, vcf_template, genome, take_prefe
       
       sv_chrom_pos = rbind(sv_chrom_pos, data.frame(chrom=as.character(dat$chr1[i]), pos=dat$original_pos1[i]))
       WTCount[i] = dat$adjusted_norm1[i]
+      ids[i] = dat$original_ID[i]
     } else if ((dat$preferred_side[i]==1 & take_preferred_breakpoint) | (dat$preferred_side[i]==0 & !take_preferred_breakpoint)) {
       # sv_chrom_pos = rbind(sv_chrom_pos, data.frame(chrom=as.character(dat$chr2[i]), pos=dat$pos2[i]))
       
@@ -514,6 +516,8 @@ prepare_svclone_output = function(svclone_file, vcf_template, genome, take_prefe
       
       sv_chrom_pos = rbind(sv_chrom_pos, data.frame(chrom=as.character(dat$chr2[i]), pos=dat$original_pos2[i]))
       WTCount[i] = dat$adjusted_norm2[i]
+      # replace XYZ1_1 with XYZ1_2 or XYZ1_2 with XYZ1_1
+      ids[i] = ifelse(grepl("_1", dat$original_ID[i]), gsub("_1", "_2", dat$original_ID[i]), gsub("_2", "_1", dat$original_ID[i]))
     } 
   }
   
