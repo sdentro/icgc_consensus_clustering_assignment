@@ -146,8 +146,6 @@ if (is.null(svclone_file) | is.null(svclone_file)) {
 } else {
   vcf_sv = prepare_svclone_output(svclone_file, vcf_template, genome="GRCh37")
   vcf_sv_alt = prepare_svclone_output(svclone_file, vcf_template, genome="GRCh37", take_preferred_breakpoint=F)
-  writeVcf(vcf_sv, filename="test.vcf")
-  writeVcf(vcf_sv_alt, filename="test_alt.vcf")
 }
 
 purityPloidy = read.table(purity_file, header=TRUE, sep="\t")
@@ -547,9 +545,3 @@ save.image(file.path(outdir, paste0(samplename, "_assignment.RData")))
   #}
   #dev.off()
   #}
-
-
-# ptoduce pcawg11 output
-write.table(final_pcawg11_output$final_clusters, file=file.path(outdir, paste0(samplename, "_subclonal_structure.txt")), row.names=F, sep="\t", quote=F)
-write.table(final_pcawg11_output$snv_assignments, file=file.path(outdir, paste0(samplename,"_mutation_assignments.txt")), row.names=F, sep="\t", quote=F)
-write.table(final_pcawg11_output$snv_mult, file=file.path(outdir, paste0(samplename,"_multiplicity.txt")), row.names=F, sep="\t", quote=F)
