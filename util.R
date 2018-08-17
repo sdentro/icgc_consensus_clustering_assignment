@@ -248,11 +248,13 @@ get_summary_table_entry = function(samplename, summary_table, cluster_info, snv_
 # PCAWG11 Calibration format
 ########################################################################
 
-pcawg11_output = function(snv_mtimer, indel_mtimer, sv_mtimer, MCN, MCN_indel, MCN_sv, vcf_sv, consensus_vcf_file) {
+pcawg11_output = function(snv_mtimer, indel_mtimer, sv_mtimer, MCN, MCN_indel, vcf_snv, vcf_indel, vcf_sv, MCN_sv_alt=NULL, vcf_sv_alt=NULL, sv_alt_mtimer=NULL) {
   # Cluster locations
   final_clusters = snv_mtimer$clusters
   
+  ###################################################
   # Assignments
+  ###################################################
   snv_assignments = data.frame(chr=as.character(seqnames(vcf_snv)), pos=as.numeric(start(vcf_snv)), cluster=snv_mtimer$plot_data$cluster)
   if (!is.null(indel_mtimer)) {
     indel_assignments = data.frame(chr=as.character(seqnames(vcf_indel)), pos=as.numeric(start(vcf_indel)), cluster=indel_mtimer$plot_data$cluster)
@@ -265,7 +267,15 @@ pcawg11_output = function(snv_mtimer, indel_mtimer, sv_mtimer, MCN, MCN_indel, M
     sv_assignments = NULL
   }
   
+  if (!is.null(vcf_sv_alt)) {
+    sv_alt_assignments = data.frame(chr=info(vcf_sv_alt)$chr1, pos=info(vcf_sv_alt)$pos1, chr2=info(vcf_sv_alt)$chr2, pos2=info(vcf_sv_alt)$pos2, cluster=sv_alt_mtimer$plot_data$cluster)
+  } else {
+    sv_alt_assignments = NULL
+  }
+  
+  ###################################################
   # Multiplicities
+  ###################################################
   snv_mult = data.frame(chr=snv_assignments$chr, 
                         pos=snv_assignments$pos, 
                         tumour_copynumber=MCN$D$MajCN+MCN$D$MinCN, 
@@ -291,6 +301,20 @@ pcawg11_output = function(snv_mtimer, indel_mtimer, sv_mtimer, MCN, MCN_indel, M
     sv_mult = NULL
   }
   
+  if (!is.null(vcf_sv_alt)) {
+    sv_alt_mult = data.frame(chr=sv_alt_assignments$chr, 
+                         pos=sv_alt_assignments$pos, 
+                         chr2=sv_alt_assignments$chr2,
+                         pos2=sv_alt_assignments$pos2,
+                         tumour_copynumber=MCN_sv_alt$D$MajCN+MCN_sv_alt$D$MinCN, 
+                         multiplicity=MCN_sv_alt$D$MutCN, multiplicity_options=NA, probabilities=NA)
+  } else {
+    sv_alt_mult = NULL
+  }
+  
+  ###################################################
+  # Assignment probabilities
+  ###################################################
   get_probs = function(final_clusters, MCN, vcf_snv) {
     
     n_subclones = nrow(final_clusters)-1
@@ -339,22 +363,50 @@ pcawg11_output = function(snv_mtimer, indel_mtimer, sv_mtimer, MCN, MCN_indel, M
     sv_assignments_prob = NULL
   }
   
+  if (!is.null(vcf_sv_alt)) {
+    # Obtain probabilities - SV, non preferred allele
+    sv_alt_assignments_prob = get_probs(final_clusters, MCN_sv_alt, vcf_sv_alt)
+    same_end_selected = sv_alt_assignments$chr==sv_alt_assignments_prob$chr & sv_alt_assignments$pos==sv_alt_assignments_prob$pos
+    sv_alt_assignments_prob$chr2 = sv_alt_assignments$chr2
+    sv_alt_assignments_prob$pos2 = sv_alt_assignments$pos2
+    sv_alt_assignments_prob$chr[!same_end_selected] = sv_alt_assignments$chr[!same_end_selected]
+    sv_alt_assignments_prob$pos[!same_end_selected] = sv_alt_assignments$pos[!same_end_selected]
+  } else {
+    sv_alt_assignments_prob = NULL
+  }
+  
+  ###################################################
   # Recalculate the size of the clusters
+  ###################################################
   final_clusters$n_snvs = colSums(snv_assignments_prob[, grepl("cluster", colnames(snv_assignments_prob)), drop=F], na.rm=T)
   if (!is.null(indel_mtimer) && nrow(indel_assignments) > 0) {
     final_clusters$n_indels = colSums(indel_assignments_prob[, grepl("cluster", colnames(indel_assignments_prob)), drop=F], na.rm=T)
   } else {
     final_clusters$n_indels = NA
   }
+  
   if (!is.null(vcf_sv)) {
     final_clusters$n_svs = sv_mtimer$clusters$n_ssms
     if (nrow(final_clusters)==1) {
-	final_clusters$n_svs = sum(sv_assignments_prob[, grepl("cluster", colnames(sv_assignments_prob))], na.rm=T)
+      final_clusters$n_svs = sum(sv_assignments_prob[, grepl("cluster", colnames(sv_assignments_prob))], na.rm=T)
     } else {
     	final_clusters$n_svs = colSums(sv_assignments_prob[, grepl("cluster", colnames(sv_assignments_prob)), drop=F], na.rm=T)
     }
   } else {
     final_clusters$n_svs = NA 
+  }
+  
+  ###################################################
+  # Combine SV breakpoint data
+  ###################################################
+  
+  # If both SV breakpoints have been supplied, then merge the output here
+  # cluster sizes have been updated above already by using just a single
+  # breakpoint, as each SV is represented by multiple
+  if (!is.null(vcf_sv) & !is.null(vcf_sv_alt)) {
+    sv_assignments_prob = rbind(sv_assignments_prob, sv_alt_assignments_prob)
+    sv_assignments = rbind(sv_assignments, sv_alt_assignments)
+    sv_mult = rbind(sv_mult, sv_alt_mult)
   }
    
   return(list(final_clusters=final_clusters, 
@@ -373,6 +425,25 @@ pcawg11_output = function(snv_mtimer, indel_mtimer, sv_mtimer, MCN, MCN_indel, M
 ########################################################################
 # Structural variants
 ########################################################################
+#' Get copy number at exactly the SV breakpoint location
+#' 
+#' This creates a dummy copy number profile where the SV position corresponds
+#' to its mapped copy number state, which by original coordinates may not
+#' necesarily map. This function exists to circumvent this
+#' @param bb A copy number profile loaded by loadBB
+#' @param vcf_sv A VCF format object as output by \code{prepare_svclone_output}
+#' @return A GRanges object with copynumber at exactly the SV bases
+copynumber_at_sv_locations = function(bb, vcf_sv) {
+  temp_bb = rep(bb[1,c("total_cn", "major_cn", "minor_cn", "clonal_frequency")], length(vcf_sv))
+  for (i in 1:length(vcf_sv)) {
+    seqnames(temp_bb)[i] = seqnames(vcf_sv)[i]
+    start(temp_bb)[i] = end(temp_bb[i]) = start(vcf_sv)[i]
+    temp_bb$major_cn[i] = info(vcf_sv)$major_cn[i]
+    temp_bb$minor_cn[i] = info(vcf_sv)$minor_cn[i]
+    temp_bb$total_cn[i] = temp_bb$major_cn[i] + temp_bb$minor_cn[i]
+  }
+  return(temp_bb)
+}
 
 #' Obtain for every SV altCount, tumDepth and majorCN
 #' 

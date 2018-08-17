@@ -145,7 +145,9 @@ if (is.null(svclone_file) | is.null(svclone_file)) {
   vcf_sv = NULL
 } else {
   vcf_sv = prepare_svclone_output(svclone_file, vcf_template, genome="GRCh37")
+  vcf_sv_alt = prepare_svclone_output(svclone_file, vcf_template, genome="GRCh37", take_preferred_breakpoint=F)
   writeVcf(vcf_sv, filename="test.vcf")
+  writeVcf(vcf_sv_alt, filename="test_alt.vcf")
 }
 
 purityPloidy = read.table(purity_file, header=TRUE, sep="\t")
@@ -199,22 +201,19 @@ if (!do_load) {
 	bb$timing_param <- MCN$P
 }
 
+
 if (!is.null(vcf_sv)) {
   # SVclone has mapped SVs to particular copy number segments. This may not directly correspond to the
   # segment at the exact base of the SV breakpoint. Here we therefore create a custom copy number profile
   # where the copy number corresponds at the exact base of the SV.
-  temp_bb = rep(bb[1,c("total_cn", "major_cn", "minor_cn", "clonal_frequency")], length(vcf_sv))
-  for (i in 1:length(vcf_sv)) {
-    seqnames(temp_bb)[i] = seqnames(vcf_sv)[i]
-    start(temp_bb)[i] = end(temp_bb[i]) = start(vcf_sv)[i]
-    temp_bb$major_cn[i] = info(vcf_sv)$major_cn[i]
-    temp_bb$minor_cn[i] = info(vcf_sv)$minor_cn[i]
-    temp_bb$total_cn[i] = temp_bb$major_cn[i] + temp_bb$minor_cn[i]
-  }
-  
+  temp_bb = copynumber_at_sv_locations(bb, vcf_sv)
   temp_clusters = clusters
-  temp_clusters$n_ssms = estimate_cluster_size(clusters$ccf, vcf_sv, bb, purity, sex, is_wgd, rho_snv, xmin, deltaFreq)
-  MCN_sv <- computeMutCn(vcf_sv, bb, temp_clusters, purity, gender=sex, isWgd=is_wgd, rho=rho_sv, n.boot=0, xmin=xmin, deltaFreq=deltaFreq)
+  temp_clusters$n_ssms = estimate_cluster_size(clusters$ccf, vcf_sv, temp_bb, purity, sex, is_wgd, rho_snv, xmin, deltaFreq)
+  MCN_sv <- computeMutCn(vcf_sv, temp_bb, temp_clusters, purity, gender=sex, isWgd=is_wgd, rho=rho_sv, n.boot=0, xmin=xmin, deltaFreq=deltaFreq)
+  
+  # now do the same for the other SV allele, the non-preferred one by SVclone
+  temp_clusters$n_ssms = estimate_cluster_size(clusters$ccf, vcf_sv_alt, temp_bb, purity, sex, is_wgd, rho_snv, xmin, deltaFreq)
+  MCN_sv_alt <- computeMutCn(vcf_sv_alt, temp_bb, temp_clusters, purity, gender=sex, isWgd=is_wgd, rho=rho_sv, n.boot=0, xmin=xmin, deltaFreq=deltaFreq)
 }
 
 snv_mtimer = assign_mtimer(MCN, clusters, purity)
@@ -228,6 +227,10 @@ if (!is.null(vcf_sv)) {
   sv_mtimer = assign_mtimer(MCN_sv, clusters, purity)
 }
 
+if (!is.null(vcf_sv_alt)) {
+  sv_alt_mtimer = assign_mtimer(MCN_sv_alt, clusters, purity)
+}
+
 ########################################################################
 # Create the assignment - binom probability
 ########################################################################
@@ -237,12 +240,13 @@ if (!is.null(vcf_indel)) {
 }
 if (!is.null(vcf_sv)) {
   sv_binom = assign_binom_ll(MCN_sv, clusters, purity)
+  sv_alt_binom = assign_binom_ll(MCN_sv_alt, clusters, purity)
 }
 
 ########################################################################
 # Obtain final PCAWG-11 output
 ########################################################################
-final_pcawg11_output = pcawg11_output(snv_mtimer, indel_mtimer, sv_mtimer, MCN, MCN_indel, MCN_sv, vcf_sv, sv_vcf_file)
+final_pcawg11_output = pcawg11_output(snv_mtimer, indel_mtimer, sv_mtimer, MCN, MCN_indel, MCN_sv, vcf_snv, vcf_indel, vcf_sv, sv_alt_mtimer, MCN_sv_alt, vcf_sv_alt) #sv_vcf_file
 
 ########################################################################
 # Output to share with PCAWG
@@ -307,24 +311,29 @@ if (!is.null(vcf_sv)) {
                          prob_subclonal=MCN_sv$D$pSub,
                          stringsAsFactors=F)
 
-  # TODO: at this point only a single end is included, so will need to add the second end point here
-  # it may be worth while to add the SVID from the svclone vaf file into vcf_sv, for reference here
-  
-  # Remap SVs into their correct position
-  res = remap_svs(sv_vcf_file, svclone_file, final_pcawg11_output$sv_assignments, final_pcawg11_output$sv_assignments_prob, sv_timing)
-  final_pcawg11_output$sv_assignments = res$sv_assignments
-  final_pcawg11_output$sv_assignments_prob = res$sv_assignments_prob
-  sv_timing = res$sv_timing
-  # sv_timing$svid = final_pcawg11_output$sv_assignments$id
+  if (!is.null(vcf_sv_alt)) {
+    sv_alt_timing = data.frame(chromosome=info(vcf_sv_alt)$chr1,
+                           position=info(vcf_sv_alt)$pos1,
+                           mut_type=rep("SV", nrow(MCN_sv_alt$D)),
+                           timing=classifyMutations(MCN_sv_alt$D),
+                           chromosome2=info(vcf_sv_alt)$chr2,
+                           position2=info(vcf_sv_alt)$pos2,
+                           svid=NA,
+                           prob_clonal_early=MCN_sv_alt$D$pGain,
+                           prob_clonal_late=MCN_sv_alt$D$pSingle,
+                           prob_subclonal=MCN_sv_alt$D$pSub,
+                           stringsAsFactors=F)
+    sv_timing = rbind(sv_timing, sv_alt_timing)
+  } else {
+    # When no alt allele is provided we want to add the second SV breakpoint by copying the details of the first
+    
+    # Remap SVs into their correct position
+    res = remap_svs(sv_vcf_file, svclone_file, final_pcawg11_output$sv_assignments, final_pcawg11_output$sv_assignments_prob, sv_timing)
+    final_pcawg11_output$sv_assignments = res$sv_assignments
+    final_pcawg11_output$sv_assignments_prob = res$sv_assignments_prob
+    sv_timing = res$sv_timing
+  }
 
-  # sv_output = data.frame(chromosome=final_pcawg11_output$sv_assignments_prob$chr,
-  #                        position=final_pcawg11_output$sv_assignments_prob$pos,
-  #                        mut_type=rep("SV", nrow(final_pcawg11_output$sv_assignments_prob)),
-  #                        final_pcawg11_output$sv_assignments_prob[, grepl("cluster", colnames(final_pcawg11_output$sv_assignments_prob)), drop=F],
-  #                        chromosome2=final_pcawg11_output$sv_assignments_prob$chr2,
-  #                        position2=final_pcawg11_output$sv_assignments_prob$pos2,
-  #                        svid=final_pcawg11_output$sv_assignments$id,
-  #                        stringsAsFactors=F)
   
   sv_output = data.frame(chromosome=final_pcawg11_output$sv_assignments$chr, #info(vcf_sv)$chr1,
                          position=final_pcawg11_output$sv_assignments$pos, #info(vcf_sv)$pos1,
