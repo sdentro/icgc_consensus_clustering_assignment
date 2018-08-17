@@ -247,7 +247,6 @@ get_summary_table_entry = function(samplename, summary_table, cluster_info, snv_
 ########################################################################
 # PCAWG11 Calibration format
 ########################################################################
-
 pcawg11_output = function(snv_mtimer, indel_mtimer, sv_mtimer, MCN, MCN_indel, MCN_sv, vcf_snv, vcf_indel, vcf_sv, MCN_sv_alt=NULL, vcf_sv_alt=NULL, sv_alt_mtimer=NULL) {
   # Cluster locations
   final_clusters = snv_mtimer$clusters

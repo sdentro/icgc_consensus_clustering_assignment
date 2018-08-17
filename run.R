@@ -247,7 +247,7 @@ if (!is.null(vcf_sv)) {
 ########################################################################
 # Obtain final PCAWG-11 output
 ########################################################################
-final_pcawg11_output = pcawg11_output(snv_mtimer, indel_mtimer, sv_mtimer, MCN, MCN_indel, MCN_sv, vcf_snv, vcf_indel, vcf_sv, sv_alt_mtimer, MCN_sv_alt, vcf_sv_alt) #sv_vcf_file
+final_pcawg11_output = pcawg11_output(snv_mtimer, indel_mtimer, sv_mtimer, MCN, MCN_indel, MCN_sv, vcf_snv, vcf_indel, vcf_sv, MCN_sv_alt, vcf_sv_alt, sv_alt_mtimer) #sv_vcf_file
 
 ########################################################################
 # Output to share with PCAWG
