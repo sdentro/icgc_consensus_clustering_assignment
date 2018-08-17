@@ -241,6 +241,8 @@ if (!is.null(vcf_indel)) {
 }
 if (!is.null(vcf_sv)) {
   sv_binom = assign_binom_ll(MCN_sv, clusters, purity)
+}
+if (!is.null(vcf_sv_alt)) {
   sv_alt_binom = assign_binom_ll(MCN_sv_alt, clusters, purity)
 }
 
@@ -299,9 +301,8 @@ indel_output = data.frame(chromosome=final_pcawg11_output$indel_assignments_prob
 }
 
 if (!is.null(vcf_sv)) {
-  #' Some magic required to map back to chr/pos
-  sv_timing = data.frame(chromosome=info(vcf_sv)$chr1,
-                         position=info(vcf_sv)$pos1,
+  sv_timing = data.frame(chromosome=as.character(seqnames(vcf_sv)),
+                         position=start(vcf_sv),
                          mut_type=rep("SV", nrow(MCN_sv$D)),
                          timing=classifyMutations(MCN_sv$D),
                          chromosome2=info(vcf_sv)$chr2,
@@ -313,8 +314,9 @@ if (!is.null(vcf_sv)) {
                          stringsAsFactors=F)
 
   if (!is.null(vcf_sv_alt)) {
-    sv_alt_timing = data.frame(chromosome=info(vcf_sv_alt)$chr1,
-                           position=info(vcf_sv_alt)$pos1,
+    # here we use the other SV breakpoint for a separate assignment
+    sv_alt_timing = data.frame(chromosome=as.character(seqnames(vcf_sv_alt)),
+                           position=start(vcf_sv_alt),
                            mut_type=rep("SV", nrow(MCN_sv_alt$D)),
                            timing=classifyMutations(MCN_sv_alt$D),
                            chromosome2=info(vcf_sv_alt)$chr2,

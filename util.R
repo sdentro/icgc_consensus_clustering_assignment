@@ -267,7 +267,7 @@ pcawg11_output = function(snv_mtimer, indel_mtimer, sv_mtimer, MCN, MCN_indel, M
   }
   
   if (!is.null(vcf_sv_alt)) {
-    sv_alt_assignments = data.frame(chr=info(vcf_sv_alt)$chr1, pos=info(vcf_sv_alt)$pos1, chr2=info(vcf_sv_alt)$chr2, pos2=info(vcf_sv_alt)$pos2, cluster=sv_alt_mtimer$plot_data$cluster, id=info(vcf_sv_alt)$id)
+    sv_alt_assignments = data.frame(chr=info(vcf_sv_alt)$chr2, pos=info(vcf_sv_alt)$pos2, chr2=info(vcf_sv_alt)$chr1, pos2=info(vcf_sv_alt)$pos1, cluster=sv_alt_mtimer$plot_data$cluster, id=info(vcf_sv_alt)$id)
   } else {
     sv_alt_assignments = NULL
   }
