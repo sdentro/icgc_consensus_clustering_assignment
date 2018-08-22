@@ -186,11 +186,11 @@ if (merge_clusters & nrow(clusters) > 1) { clusters = mergeClustersByMutreadDiff
 ########################################################################
 #' Assign using Moritz' approach
 if (!do_load) {
-  #save.image("test.RData")
 	MCN <- computeMutCn(vcf_snv, bb, clusters, purity, gender=sex, isWgd=is_wgd, rho=rho_snv, n.boot=0, xmin=xmin, deltaFreq=deltaFreq)
 	# Save priors for mutation copy number - commented out because priors are not pre-calculated when there are no SNVs on a segment, which yields no probabilities for indels and SVs on such a segment
 	#bb$timing_param <- MCN$P
 	if (!is.null(vcf_indel)) {
+	  save.image("test.RData")
 	  temp = clusters
 	  temp$n_ssms = estimate_cluster_size(clusters$ccf, vcf_indel, bb, purity, sex, is_wgd, rho_snv, xmin, deltaFreq)
 		MCN_indel <- computeMutCn(vcf_indel, bb, temp, purity, gender=sex, isWgd=is_wgd, rho=rho_indel, n.boot=0, xmin=xmin, deltaFreq=deltaFreq)
