@@ -769,15 +769,23 @@ estimate_cluster_size = function(cluster_locations, vcf_snv, bb, purity, sex, is
   alt_count = getAltCount(vcf_snv)
   wt_count = getTumorDepth(vcf_snv)-alt_count
   
-  n_snvs = length(alt_count)
+  n_muts = length(alt_count)
   clusters = data.frame(cluster=1:length(cluster_locations), location=cluster_locations, n_ssms=NA)
   clusters$proportion = clusters$location * purity
-  probs = data.frame(prob_cluster_1=rep(NA, n_snvs),
-                     prob_cluster_2=rep(NA, n_snvs))
+  # probs = data.frame(prob_cluster_1=rep(NA, n_snvs),
+  #                    prob_cluster_2=rep(NA, n_snvs))
+  probs = as.data.frame(array(NA, ncol=nrow(clusters), nrow=n_muts))
+  colnames(probs) = paste0("prob_cluster_", 1:length(cluster_locations))
   
   # ad-hoc establishment of multiplicity values to calculate starting probabilities
   overlap = findOverlaps(vcf_snv, bb)
   total_cn = bb$total_cn[subjectHits(overlap)]
+  
+  if (length(total_cn)!=length(alt_count) | length(total_cn)!=length(wt_count)) {
+    print(paste0(length(total_cn), " ", length(alt_count), " ", length(wt_count)))
+    stop("Count and copy number data not of same length")
+  }
+  
   mcn = mutationBurdenToMutationCopyNumber(alt_count/(alt_count+wt_count), total_cn, purity)
   mult = round(mcn)
   mult[mult==0] = 1
@@ -786,7 +794,7 @@ estimate_cluster_size = function(cluster_locations, vcf_snv, bb, purity, sex, is
   counter = 1
   assignments = list()
   cluster_sizes = list()
-  for (i in 1:n_snvs) {
+  for (i in 1:n_muts) {
     res = getClustLL2(NA, mult[i], total_cn[i], alt_count[i], wt_count[i], clusters$location, purity)
     # res = dtrbetabinom(dpin$mut.count[i],dpin$mut.count[i]+dpin$WT.count[i], ifelse(clusters$location==1, 1-.Machine$double.eps, clusters$location), rho=0, xmin=pmin(dpin$mut.count[i],0))# + .Machine$double.eps), ncol=length(whichStates)
     res = res-max(res)
