@@ -774,7 +774,7 @@ estimate_cluster_size = function(cluster_locations, vcf_snv, bb, purity, sex, is
   clusters$proportion = clusters$location * purity
   # probs = data.frame(prob_cluster_1=rep(NA, n_snvs),
   #                    prob_cluster_2=rep(NA, n_snvs))
-  probs = as.data.frame(array(NA, ncol=nrow(clusters), nrow=n_muts))
+  probs = as.data.frame(matrix(NA, ncol=nrow(clusters), nrow=n_muts))
   colnames(probs) = paste0("prob_cluster_", 1:length(cluster_locations))
   
   # ad-hoc establishment of multiplicity values to calculate starting probabilities
