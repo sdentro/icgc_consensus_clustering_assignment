@@ -772,23 +772,22 @@ estimate_cluster_size = function(cluster_locations, vcf, bb, purity, sex, is_wgd
   n_muts = length(alt_count)
   clusters = data.frame(cluster=1:length(cluster_locations), location=cluster_locations, n_ssms=NA)
   clusters$proportion = clusters$location * purity
-  # probs = data.frame(prob_cluster_1=rep(NA, n_snvs),
-  #                    prob_cluster_2=rep(NA, n_snvs))
+
+  if (nrow(clusters)==1) {
+	  clusters$n_ssms[1] = n_muts
+	  return(clusters)
+  }
+
   probs = as.data.frame(matrix(NA, ncol=nrow(clusters), nrow=n_muts))
   colnames(probs) = paste0("prob_cluster_", 1:length(cluster_locations))
   
   # ad-hoc establishment of multiplicity values to calculate starting probabilities
   overlap = findOverlaps(vcf, bb)
   total_cn = bb$total_cn[subjectHits(overlap)]
-  
+
   # take only those mutations that overlap with copy number (i.e. that have a ccf value)
-  alt_count = alt_count(queryHits(overlap))
-  wt_count = wt_count(queryHits(overlap))
-  
-  if (length(total_cn)!=length(alt_count) | length(total_cn)!=length(wt_count)) {
-    print(paste0(length(total_cn), " ", length(alt_count), " ", length(wt_count)))
-    stop("Count and copy number data not of same length")
-  }
+  alt_count = alt_count[queryHits(overlap)]
+  wt_count = wt_count[queryHits(overlap)]
   
   mcn = mutationBurdenToMutationCopyNumber(alt_count/(alt_count+wt_count), total_cn, purity)
   mult = round(mcn)
