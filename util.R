@@ -753,7 +753,7 @@ write_output_summary_table = function(structure_df, outdir, samplename, project,
 
 #' Estimate cluster sizes from cluster locations and provided mutation data
 #' @param cluster_locations Locations of clusters in CCF
-#' @param vcf_snv A VCF file in ICGC PCAWG consensus format, read in
+#' @param vcf A VCF file in ICGC PCAWG consensus format, read in
 #' @param bb GenomicRanges object, output of loadBB, a loaded in segments file
 #' @param purity The tumour purity estimate
 #' @param sex Either male or female
@@ -764,10 +764,10 @@ write_output_summary_table = function(structure_df, outdir, samplename, project,
 #' @param max_iters Maximum number of iterations of EM to allow (Default: 10)
 #' @param min_snvs_assign_change Minimum number of SNVs to change between two iterations, fewer than this number stops EM (Default: 10)
 #' @return A vector with the estimated cluster locations
-estimate_cluster_size = function(cluster_locations, vcf_snv, bb, purity, sex, is_wgd, rho_snv, xmin, deltaFreq, max_iters=10, min_snvs_assign_change=10) {
-  
-  alt_count = getAltCount(vcf_snv)
-  wt_count = getTumorDepth(vcf_snv)-alt_count
+estimate_cluster_size = function(cluster_locations, vcf, bb, purity, sex, is_wgd, rho_snv, xmin, deltaFreq, max_iters=10, min_snvs_assign_change=10) {
+  # estimate_cluster_size(clusters$ccf, vcf_indel, bb, purity, sex, is_wgd, rho_snv, xmin, deltaFreq)
+  alt_count = getAltCount(vcf)
+  wt_count = getTumorDepth(vcf)-alt_count
   
   n_muts = length(alt_count)
   clusters = data.frame(cluster=1:length(cluster_locations), location=cluster_locations, n_ssms=NA)
@@ -778,8 +778,12 @@ estimate_cluster_size = function(cluster_locations, vcf_snv, bb, purity, sex, is
   colnames(probs) = paste0("prob_cluster_", 1:length(cluster_locations))
   
   # ad-hoc establishment of multiplicity values to calculate starting probabilities
-  overlap = findOverlaps(vcf_snv, bb)
+  overlap = findOverlaps(vcf, bb)
   total_cn = bb$total_cn[subjectHits(overlap)]
+  
+  # take only those mutations that overlap with copy number (i.e. that have a ccf value)
+  alt_count = alt_count(queryHits(overlap))
+  wt_count = wt_count(queryHits(overlap))
   
   if (length(total_cn)!=length(alt_count) | length(total_cn)!=length(wt_count)) {
     print(paste0(length(total_cn), " ", length(alt_count), " ", length(wt_count)))
@@ -811,8 +815,8 @@ estimate_cluster_size = function(cluster_locations, vcf_snv, bb, purity, sex, is
   while(running) {
     
     # e step - assign using current cluster sizes
-    MCN <- computeMutCn(vcf_snv, bb, cluster_sizes[[counter-1]], purity, gender=sex, isWgd=is_wgd, rho=rho_snv, n.boot=0, xmin=xmin, deltaFreq=deltaFreq)
-    probs = get_probs(cluster_sizes[[counter-1]], MCN, vcf_snv)[,3:(nrow(cluster_sizes[[counter-1]])+2)]
+    MCN <- computeMutCn(vcf, bb, cluster_sizes[[counter-1]], purity, gender=sex, isWgd=is_wgd, rho=rho_snv, n.boot=0, xmin=xmin, deltaFreq=deltaFreq)
+    probs = get_probs(cluster_sizes[[counter-1]], MCN, vcf)[,3:(nrow(cluster_sizes[[counter-1]])+2)]
     assignments[[counter]] = probs
     
     # m step - update cluster sizes
