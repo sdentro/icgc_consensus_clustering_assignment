@@ -436,7 +436,12 @@ copynumber_at_sv_locations = function(bb, vcf_sv) {
   temp_bb = rep(bb[1,c("total_cn", "major_cn", "minor_cn", "clonal_frequency")], length(vcf_sv))
   for (i in 1:length(vcf_sv)) {
     seqnames(temp_bb)[i] = seqnames(vcf_sv)[i]
-    start(temp_bb)[i] = end(temp_bb[i]) = start(vcf_sv)[i]
+    # assign seg boundaries in right order as to not create negative length segments
+    if (end(temp_bb[i]) < start(vcf_sv)[i]) {
+      start(temp_bb)[i] = end(temp_bb[i]) = start(vcf_sv)[i]
+    } else {
+      end(temp_bb[i]) = start(temp_bb)[i] = start(vcf_sv)[i]
+    }
     temp_bb$major_cn[i] = info(vcf_sv)$major_cn[i]
     temp_bb$minor_cn[i] = info(vcf_sv)$minor_cn[i]
     temp_bb$total_cn[i] = temp_bb$major_cn[i] + temp_bb$minor_cn[i]
@@ -771,11 +776,10 @@ estimate_cluster_size = function(cluster_locations, vcf, bb, purity, sex, is_wgd
   
   n_muts = length(alt_count)
   clusters = data.frame(cluster=1:length(cluster_locations), location=cluster_locations, n_ssms=NA)
-  clusters$proportion = clusters$location * purity
+  clusters$proportion = cluster_locations * purity
 
   if (nrow(clusters)==1) {
-	  clusters$n_ssms[1] = n_muts
-	  return(clusters)
+	  return(n_muts)
   }
 
   probs = as.data.frame(matrix(NA, ncol=nrow(clusters), nrow=n_muts))
