@@ -205,14 +205,14 @@ if (!is.null(vcf_sv)) {
   # where the copy number corresponds at the exact base of the SV.
   temp_bb = copynumber_at_sv_locations(bb, vcf_sv)
   temp_clusters = clusters
-  temp_clusters$n_ssms = estimate_cluster_size(clusters$ccf, vcf_sv, temp_bb, purity, sex, is_wgd, rho_snv, xmin, deltaFreq)
+  temp_clusters$n_ssms = estimate_cluster_size(clusters$ccf, vcf_sv, temp_bb, purity, sex, is_wgd, rho_sv, xmin, deltaFreq)
   MCN_sv <- computeMutCn(vcf_sv, temp_bb, temp_clusters, purity, gender=sex, isWgd=is_wgd, rho=rho_sv, n.boot=0, xmin=xmin, deltaFreq=deltaFreq)
   
   # now do the same for the other SV allele, the non-preferred one by SVclone
   temp_bb = copynumber_at_sv_locations(bb, vcf_sv_alt)
-  temp_clusters_alt = clusters
-  temp_clusters_alt$n_ssms = estimate_cluster_size(clusters$ccf, vcf_sv_alt, temp_bb, purity, sex, is_wgd, rho_snv, xmin, deltaFreq)
-  MCN_sv_alt <- computeMutCn(vcf_sv_alt, temp_bb, temp_clusters_alt, purity, gender=sex, isWgd=is_wgd, rho=rho_sv, n.boot=0, xmin=xmin, deltaFreq=deltaFreq)
+  #temp_clusters_alt = clusters
+  #temp_clusters_alt$n_ssms = estimate_cluster_size(clusters$ccf, vcf_sv_alt, temp_bb, purity, sex, is_wgd, rho_sv, xmin, deltaFreq)
+  MCN_sv_alt <- computeMutCn(vcf_sv_alt, temp_bb, temp_clusters, purity, gender=sex, isWgd=is_wgd, rho=rho_sv, n.boot=0, xmin=xmin, deltaFreq=deltaFreq)
 }
 
 snv_mtimer = assign_mtimer(MCN, clusters, purity)
