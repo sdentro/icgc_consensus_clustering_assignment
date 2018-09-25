@@ -198,7 +198,7 @@ if (!do_load) {
 	bb$timing_param <- MCN$P
 }
 
-
+save.image("debug.RData")
 if (!is.null(vcf_sv)) {
   # SVclone has mapped SVs to particular copy number segments. This may not directly correspond to the
   # segment at the exact base of the SV breakpoint. Here we therefore create a custom copy number profile
@@ -366,6 +366,8 @@ if (!is.null(vcf_sv)) {
 ########################################################################
 # Summary table entry
 ########################################################################
+
+# summarise tail probabilities for the beta-binomials fit to easch mutation type
 qq_snv <- mean(MCN$D$pMutCNTail < q/2 | MCN$D$pMutCNTail > 1-q/2, na.rm=T)
 if (!is.null(vcf_indel)) {
   qq_indel <- mean(MCN_indel$D$pMutCNTail < q/2 | MCN_indel$D$pMutCNTail > 1-q/2, na.rm=T)
@@ -408,7 +410,37 @@ sample_entry = data.frame(sample_entry, posthoc_stats, stringsAsFactors=F)
 
 write.table(sample_entry, file.path(outdir, paste0(samplename, "_summary_table_entry.txt")), row.names=F, sep="\t", quote=F)
 
-# Save the PCAWG data
+########################################################################
+# produce pcawg wide output
+########################################################################
+subcl_struct = final_pcawg11_output$final_clusters[,c("cluster", "proportion", "ccf", "n_snvs", "n_indels", "n_svs")]
+colnames(subcl_struct)[2] = "fraction_total_cells"
+colnames(subcl_struct)[3] = "fraction_cancer_cells"
+
+if (F) {
+if (!is.null(vcf_sv)) {
+  # Bug in pipeline, fixed post-hoc
+  sv_output = data.frame(chromosome=final_pcawg11_output$sv_assignments_prob$chr,
+                         position=final_pcawg11_output$sv_assignments_prob$pos,
+                         mut_type=rep("SV", nrow(final_pcawg11_output$sv_assignments_prob)),
+                         final_pcawg11_output$sv_assignments_prob[, grepl("cluster", colnames(final_pcawg11_output$sv_assignments_prob)), drop=F],
+                         chromosome2=final_pcawg11_output$sv_assignments_prob$chr2,
+                         position2=final_pcawg11_output$sv_assignments_prob$pos2,
+                         svid=final_pcawg11_output$sv_assignments$id,
+                         stringsAsFactors=F)
+  assign_probs = do.call(rbind, list(snv_output, indel_output, sv_output))
+}
+}
+for (i in which(is.na(timing$timing))) {
+  assign_probs[i, grepl("cluster", colnames(assign_probs))] = NA
+}
+
+write.table(subcl_struct, file=file.path(outdir, paste0(samplename, "_subclonal_structure.txt")), quote=F, row.names=F, sep="\t")
+write.table(assign_probs, file=file.path(outdir, paste0(samplename, "_cluster_assignments.txt")), quote=F, row.names=F, sep="\t")
+write.table(timing, file=file.path(outdir, paste0(samplename, "_mutation_timing.txt")), quote=F, row.names=F, sep="\t")
+save.image(file.path(outdir, paste0(samplename, "_assignment.RData")))
+
+# Save the PCAWG data - does not require loading of any libraries
 save(samplename, final_pcawg11_output, timing, assign_probs, posthoc_stats, file=file.path(outdir, paste0(samplename, "_pcawg11_output.RData")))
 
 ########################################################################
@@ -479,8 +511,6 @@ png(file.path(outdir, paste0(samplename, "_final_assignment.png")), height=400, 
 grid.arrange(p6, p, p3, p4, p5, nrow=1, top=title)
 dev.off()
 
-save.image(file.path(outdir, paste0(samplename, "_assignment.RData")))
-
 # No longer used
 # #' DPClust output - sync the data frames
 # assign_chr_pos = paste0(dpc_assign$chr, "_", dpc_assign$pos)
@@ -528,9 +558,10 @@ save.image(file.path(outdir, paste0(samplename, "_assignment.RData")))
   write.table(subcl_struct, file=file.path(outdir, paste0(samplename, "_subclonal_structure.txt")), quote=F, row.names=F, sep="\t")
   write.table(assign_probs, file=file.path(outdir, paste0(samplename, "_cluster_assignments.txt")), quote=F, row.names=F, sep="\t")
   write.table(timing, file=file.path(outdir, paste0(samplename, "_mutation_timing.txt")), quote=F, row.names=F, sep="\t")
+  save.image(file.path(outdir, paste0(samplename, "_assignment.RData")))
 
 
-   write_output_summary_table(subcl_struct, outdir, samplename, project, purity)
+   #write_output_summary_table(subcl_struct, outdir, samplename, project, purity)
 
 
   #if (make_plot) {

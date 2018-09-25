@@ -497,6 +497,7 @@ prepare_svclone_output = function(svclone_file, vcf_template, genome, take_prefe
   major_cn = array(NA, length(mutCount))
   minor_cn = array(NA, length(mutCount))
   ids = array(NA, length(mutCount))
+  original_pos = array(NA, length(mutCount))
   
   #' Select the preferred SV end from SVclone
   sv_chrom_pos = data.frame()
@@ -508,8 +509,11 @@ prepare_svclone_output = function(svclone_file, vcf_template, genome, take_prefe
       copy_number = as.numeric(unlist(stringr::str_split(dat$gtype1[i], ","))[1:2])
       major_cn[i] = copy_number[1]
       minor_cn[i] = copy_number[2]
-      
-      sv_chrom_pos = rbind(sv_chrom_pos, data.frame(chrom=as.character(dat$chr1[i]), pos=dat$original_pos1[i]))
+
+      # save the original position, and renumber the position with the row index. it cannot be guaranteed that 
+      # pos1, pos2, original_pos1 or original_pos2 are unique. Hence the renumbering      
+      original_pos[i] = dat$original_pos1[i]
+      sv_chrom_pos = rbind(sv_chrom_pos, data.frame(chrom=as.character(dat$chr1[i]), pos=i))
       WTCount[i] = dat$adjusted_norm1[i]
       ids[i] = dat$original_ID[i]
     } else if ((dat$preferred_side[i]==1 & take_preferred_breakpoint) | (dat$preferred_side[i]==0 & !take_preferred_breakpoint)) {
@@ -519,7 +523,10 @@ prepare_svclone_output = function(svclone_file, vcf_template, genome, take_prefe
       major_cn[i] = copy_number[1]
       minor_cn[i] = copy_number[2]
       
-      sv_chrom_pos = rbind(sv_chrom_pos, data.frame(chrom=as.character(dat$chr2[i]), pos=dat$original_pos2[i]))
+      # save the original position, and renumber the position with the row index. it cannot be guaranteed that
+      # pos1, pos2, original_pos1 or original_pos2 are unique. Hence the renumbering
+      original_pos[i] = dat$original_pos2[i]
+      sv_chrom_pos = rbind(sv_chrom_pos, data.frame(chrom=as.character(dat$chr2[i]), pos=i))
       WTCount[i] = dat$adjusted_norm2[i]
       # replace XYZ1_1 with XYZ1_2 or XYZ1_2 with XYZ1_1
       ids[i] = ifelse(grepl("_1", dat$original_ID[i]), gsub("_1", "_2", dat$original_ID[i]), gsub("_2", "_1", dat$original_ID[i]))
@@ -530,7 +537,7 @@ prepare_svclone_output = function(svclone_file, vcf_template, genome, take_prefe
   v <- readVcf(snv_vcf_file, genome=genome)
   d = data.frame(chromosome=sv_chrom_pos$chrom, position=sv_chrom_pos$pos)
   d.gr = makeGRangesFromDataFrame(d, start.field="position", end.field="position")
-  d.info = DataFrame(t_alt_count=mutCount, t_ref_count=WTCount, chr1=dat$chr1, pos1=dat$pos1, chr2=dat$chr2, pos2=dat$pos2, id=ids, major_cn=major_cn, minor_cn=minor_cn)
+  d.info = DataFrame(t_alt_count=mutCount, t_ref_count=WTCount, chr1=dat$chr1, pos1=dat$original_pos1, chr2=dat$chr2, pos2=dat$original_pos2, id=ids, major_cn=major_cn, minor_cn=minor_cn, original_pos=original_pos)
   d.v = VCF(rowRanges=d.gr, exptData=metadata(v), geno=geno(v), fixed=rep(fixed(v)[1,], nrow(d)), colData=colData(v), info=d.info)
   return(d.v)
 }
