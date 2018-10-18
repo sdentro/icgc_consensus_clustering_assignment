@@ -4,50 +4,52 @@
 
 This repo contains code used to assign mutations (SNV, indel and SV) to consensus mutation clusters from subclonal reconstruction methods.
 
+<<<<<<< HEAD
+ 
+=======
 ## General procedure
 
 
 
+>>>>>>> 56f29f01cd565996d8d167625c6ea19fbfb0e4d8
 ## Dependencies
 
 Software packages used to develop the code and run the pipeline on the PCAWG dataset. Installation of these packages should normally take a few minutes via Bioconductor.
 
 ```
-R (version 3.3.0)
+R (version 3.1.0)
+```
+
+Internally, the pipeline calls [MutationTimeR](https://github.com/gerstung-lab/MutationTimeR)
+```
+MutationTimeR
 ```
 
 R libraries (all installed via Bioconductor)
-
 ```
 Bioconductor (version 3.4)
 BiocInstaller (version 1.24.0)
-VariantAnnotation
-VGAM
 ggplot2
 gridExtra
 grid
 ```
 
-## How to run the pipeline
-
-The pipeline consists of a single R script that can be run as follows
+## How to run
 
 ```
-R --no-save --no-restore --vanilla -f [path to repo]/run.R --args \
-	-l [path to repo] \
-	--sam [samplename] \
-	-o [output directory] \
-	--snv [SNV VCF file] \
-	--cna [consensus copy number profile] \
-	--struct [consensus subclonal structure file] \
-	--pur [tumour purity] \
-	--summ [summary file with at least these columns: samplename, inferred_sex (allowed values: male or female) and wgd_status (allowed values: wgd or no_wgd)] \
-	--ind [Indel VCF file] \
-	--sv [SV VCF file] \
-	--sv_vaf [SVclone SV VAF file]
+R --no-save --no-restore --vanilla -f run.R --args \
+-l [path to where the repository is downloaded] \
+--sam [samplename] \
+-o [output directory] \
+--snv [PCAWG consensus SNV VCF file] \
+--cna [PCAWG consensus copy number profile] \
+--struct [sample subclonal architecture] \
+--pur [tumour purity] \
+--summ ${summ_tab} \
+--ind [PCAWG consensus SNV indel file] \
+--sv [PCAWG consensus SV VCF file] \
+--sv_vaf [output file from SVclone with VAF values and copy number mapping for each SV]
 ```
-
-
 
 ## Produced output
 
@@ -102,3 +104,4 @@ The text files contain the following data:
 | prob_clonal_early | Probability of mutation being clonal and early |
 | prob_clonal_late | Probability of mutation being clonal and late |
 | prob_subclonal | Probability of mutation being subclonal |
+>>>>>>> 56f29f01cd565996d8d167625c6ea19fbfb0e4d8

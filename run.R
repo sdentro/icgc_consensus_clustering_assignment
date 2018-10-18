@@ -23,12 +23,15 @@ option_list = list(
   make_option(c("--sv"), type="character", default=NULL, help="SV VCF file", metavar="character"),
   make_option(c("--cna"), type="character", default=NULL, help="CNA segments file", metavar="character"),
   make_option(c("--struct"), type="character", default=NULL, help="Subclonal structure file", metavar="character"),
-  make_option(c("--pur"), type="character", default=NULL, help="File with purity information", metavar="character"),
+  make_option(c("--pur"), type="numeric", default=NULL, help="Sample purity", metavar="character"),
+  make_option(c("--ploi"), type="numeric", default=NULL, help="Sample ploidy", metavar="character"),
+  make_option(c("--iswgd"), type="logical", action="store_true", default=FALSE, help="Provide when the sample has undergone a whole genome doubling", metavar="character"),
   make_option(c("--summ"), type="character", default=NULL, help="Summary table", metavar="character"),
   make_option(c("--sv_vaf"), type="character", default=NULL, help="SVclone VAF file", metavar="character"),
   make_option(c("--sv_map"), type="character", default=NULL, help="SVclone ID mapping file", metavar="character"),
   make_option(c("--round_subclonal_cna"), default=FALSE, type="logical", help="Round subclonal CNAs", metavar="logical", action="store_true"),
-  make_option(c("--remove_subclonal_cna"), default=FALSE, type="logical", help="Remove subclonal CNAs", metavar="logical", action="store_true")
+  make_option(c("--remove_subclonal_cna"), default=FALSE, type="logical", help="Remove subclonal CNAs", metavar="logical", action="store_true"),
+  make_option(c("--sex"), type="character", default=NULL, help="Sex of the donor", metavar="character")
 )
 
 opt_parser = OptionParser(option_list=option_list)
@@ -40,10 +43,14 @@ outdir = opt$outputdir
 snv_vcf_file = opt$snv
 bb_file = opt$cna
 clust_file = opt$struct
-purity_file = opt$pur
+# purity_file = opt$pur
+purity = opt$pur
+ploidy = opt$ploi
+is_wgd = opt$iswgd
 summary_table_file = opt$summ
 round_subclonal_cna = opt$round_subclonal_cna
 remove_subclones = opt$remove_subclonal_cna
+sex = opt$sex
 
 # Possible not supplied arguments
 indel_vcf_file = NULL
@@ -175,9 +182,9 @@ if (is.null(svclone_file) | is.null(svclone_file)) {
   vcf_sv_alt = prepare_svclone_output(svclone_file, vcf_template, genome="GRCh37", take_preferred_breakpoint=F)
 }
 
-purityPloidy = read.table(purity_file, header=TRUE, sep="\t")
-purity = purityPloidy$purity[purityPloidy$samplename==samplename]
-ploidy = purityPloidy$ploidy[purityPloidy$samplename==samplename]
+# purityPloidy = read.table(purity_file, header=TRUE, sep="\t")
+# purity = purityPloidy$purity[purityPloidy$samplename==samplename]
+# ploidy = purityPloidy$ploidy[purityPloidy$samplename==samplename]
 if ("ccf" %in% colnames(elementMetadata(bb))) {
 	bb$clonal_frequency = purity*bb$ccf
 } else {
@@ -185,13 +192,12 @@ if ("ccf" %in% colnames(elementMetadata(bb))) {
 }
 
 summary_table = read.table(summary_table_file, header=T, stringsAsFactors=F)
-sex = summary_table$inferred_sex[summary_table$samplename==samplename]
-if ("wgd_status" %in% colnames(purityPloidy)) {
-  is_wgd = purityPloidy$wgd_status[purityPloidy$samplename==samplename]=="wgd"
-} else {
-  print("Expected a column named wgd_status with items either wgd or no_wgd")
-  q(save="no", status=1)
-}
+# if ("wgd_status" %in% colnames(purityPloidy)) {
+#   is_wgd = purityPloidy$wgd_status[purityPloidy$samplename==samplename]=="wgd"
+# } else {
+#   print("Expected a column named wgd_status with items either wgd or no_wgd")
+#   q(save="no", status=1)
+# }
 
 #' If not all clusters are there we need to renumber them
 if (max(clusters$cluster) > nrow(clusters)) {
