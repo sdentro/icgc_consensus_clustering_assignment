@@ -38,16 +38,41 @@ libpath = opt$libpath
 samplename = opt$sam
 outdir = opt$outputdir
 snv_vcf_file = opt$snv
-indel_vcf_file = opt$ind
-sv_vcf_file = opt$sv
 bb_file = opt$cna
 clust_file = opt$struct
 purity_file = opt$pur
 summary_table_file = opt$summ
-svclone_file = opt$sv_vaf
-svid_map_file = opt$sv_map
 round_subclonal_cna = opt$round_subclonal_cna
 remove_subclones = opt$remove_subclonal_cna
+
+# Possible not supplied arguments
+indel_vcf_file = NULL
+if (!is.null(opt$ind)) {
+	if (opt$ind!="NA") {
+		indel_vcf_file = opt$ind
+	}
+}
+
+sv_vcf_file = NULL
+if (!is.null(opt$sv)) {
+	if (opt$sv!="NA") {
+		sv_vcf_file = opt$sv
+	}
+}
+
+svclone_file = NULL
+if (!is.null(opt$sv_vaf)) {
+	if (opt$sv_vaf!="NA") {
+		svclone_file = opt$sv_vaf
+	}
+}
+
+svid_map_file = NULL
+if (!is.null(opt$sv_map)) {
+	if (opt$sv_map!="NA") {
+		svid_map_file = opt$sv_map
+	}
+}
 
 if (is.null(libpath) | is.null(samplename) | is.null(outdir) | is.null(snv_vcf_file) | is.null(bb_file) | is.null(clust_file) | is.null(purity_file) | is.null(summary_table_file)) {
   print_help(opt_parser)
@@ -99,8 +124,9 @@ vcf_template = file.path(libpath, "template_icgc_consensus.vcf")
 
 #source(file.path(libpath, "MutationTime.R"))
 ##UNCOMMENT
-source("~/repo/MutationTime.R/MutationTime.R")
+#source("~/repo/MutationTime.R/MutationTime.R")
 #source("~/repo/icgc_consensus_clustering_assignment//MutationTime.R")
+library(MutationTimeR)
 source(file.path(libpath, "util.R"))
 library(ggplot2)
 library(gridExtra)
@@ -143,6 +169,7 @@ if (is.null(indel_vcf_file)) {
 }
 if (is.null(svclone_file) | is.null(svclone_file)) {
   vcf_sv = NULL
+  vcf_sv_alt = NULL
 } else {
   vcf_sv = prepare_svclone_output(svclone_file, vcf_template, genome="GRCh37")
   vcf_sv_alt = prepare_svclone_output(svclone_file, vcf_template, genome="GRCh37", take_preferred_breakpoint=F)
@@ -198,7 +225,6 @@ if (!do_load) {
 	bb$timing_param <- MCN$P
 }
 
-save.image("debug.RData")
 if (!is.null(vcf_sv)) {
   # SVclone has mapped SVs to particular copy number segments. This may not directly correspond to the
   # segment at the exact base of the SV breakpoint. Here we therefore create a custom copy number profile
@@ -255,7 +281,7 @@ final_pcawg11_output = pcawg11_output(snv_mtimer, indel_mtimer, sv_mtimer, MCN, 
 snv_timing = data.frame(chromosome=as.character(seqnames(vcf_snv)),
                         position=as.numeric(start(vcf_snv)),
                         mut_type=rep("SNV", nrow(MCN$D)),
-                        timing=classifyMutations(MCN$D),
+                        timing=MutationTimeR:::classifyMutations(MCN$D),
                         chromosome2=rep(NA, nrow(MCN$D)),
                         position2=rep(NA, nrow(MCN$D)),
                         svid=rep(NA, nrow(MCN$D)),
@@ -276,7 +302,7 @@ if (!is.null(vcf_indel)) {
 indel_timing = data.frame(chromosome=as.character(seqnames(vcf_indel)),
                           position=as.numeric(start(vcf_indel)),
                           mut_type=rep("indel", nrow(MCN_indel$D)),
-                          timing=classifyMutations(MCN_indel$D),
+                          timing=MutationTimeR:::classifyMutations(MCN_indel$D),
                           chromosome2=rep(NA, nrow(MCN_indel$D)),
                           position2=rep(NA, nrow(MCN_indel$D)),
                           svid=rep(NA, nrow(MCN_indel$D)),
@@ -302,7 +328,7 @@ if (!is.null(vcf_sv)) {
   sv_timing = data.frame(chromosome=as.character(seqnames(vcf_sv)),
                          position=start(vcf_sv),
                          mut_type=rep("SV", nrow(MCN_sv$D)),
-                         timing=classifyMutations(MCN_sv$D),
+                         timing=MutationTimeR:::classifyMutations(MCN_sv$D),
                          chromosome2=info(vcf_sv)$chr2,
                          position2=info(vcf_sv)$pos2,
                          svid=info(vcf_sv)$id,
@@ -316,7 +342,7 @@ if (!is.null(vcf_sv)) {
     sv_alt_timing = data.frame(chromosome=as.character(seqnames(vcf_sv_alt)),
                            position=start(vcf_sv_alt),
                            mut_type=rep("SV", nrow(MCN_sv_alt$D)),
-                           timing=classifyMutations(MCN_sv_alt$D),
+                           timing=MutationTimeR:::classifyMutations(MCN_sv_alt$D),
                            chromosome2=info(vcf_sv_alt)$chr2,
                            position2=info(vcf_sv_alt)$pos2,
                            svid=info(vcf_sv_alt)$id,
@@ -336,7 +362,7 @@ if (!is.null(vcf_sv)) {
   }
 
   
-  sv_output = data.frame(chromosome=final_pcawg11_output$sv_assignments$chr, #info(vcf_sv)$chr1,
+  sv_output = data.frame(chromosome=as.character(final_pcawg11_output$sv_assignments$chr), #info(vcf_sv)$chr1,
                          position=final_pcawg11_output$sv_assignments$pos, #info(vcf_sv)$pos1,
                          mut_type=rep("SV", nrow(final_pcawg11_output$sv_assignments_prob)),
                          final_pcawg11_output$sv_assignments_prob[, grepl("cluster", colnames(final_pcawg11_output$sv_assignments_prob)), drop=F],
@@ -398,7 +424,6 @@ if (!is.null(vcf_sv)) {
 } else {
   sv_assignment_table = NULL
 }
-
 sample_entry = get_summary_table_entry(samplename=samplename, 
                                        summary_table=summary_table, 
                                        cluster_info=snv_mtimer$clusters_new, 
