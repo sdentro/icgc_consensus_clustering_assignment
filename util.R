@@ -1,4 +1,58 @@
 ########################################################################
+# Overloaded function from MutationTimeR
+########################################################################
+loadBB <- function(file, round_subclones=F, remove_subclones=F) {
+  if (round_subclones & remove_subclones) {
+    print("When supplying both rounding and removing to loadBB subclones are removed")
+  }
+
+
+        tab <- read.table(file, header=TRUE, sep='\t')
+        r = GRanges(tab$chromosome, IRanges(tab$start, tab$end), strand="*", tab[-3:-1])
+
+        if (remove_subclones) {
+          o = findOverlaps(r, r)
+          c = countSubjectHits(o)
+          subclonal_segments = which(c > 1)
+          r = r[-subclonal_segments,]
+
+        } else if (round_subclones) {
+
+          # Check for the ccf column
+          if (!"ccf" %in% colnames(tab)) {
+            print("No CCF column in segments supplied, stopping")
+            q(save="no", status=1)
+          }
+
+          # Round subclonal copy number by taking the maximum CCF state
+          o = findOverlaps(r, r)
+          c = countSubjectHits(o)
+
+          merged_subclonal = data.frame()
+          if (any(c > 1)) {
+	    subclonal_segments = which(c > 1)[seq(1,length(which(c > 1)), 2)]
+            for (i in subclonal_segments) {
+              tab_curr = tab[subjectHits(o)[queryHits(o)==i],]
+              tab_select = tab_curr[which.max(tab_curr$ccf),]
+              tab_select$ccf = 1
+              merged_subclonal = rbind(merged_subclonal, tab_select)
+            }
+          }
+          subclonal_segments = subjectHits(o)[which(c > 1)]
+          tab_merged = rbind(tab[c==1,], merged_subclonal)
+          r = sort(GRanges(tab_merged$chromosome, IRanges(tab_merged$start, tab_merged$end), strand="*", tab_merged[-3:-1]))
+        }
+
+        if (length(r)==0) {
+          print("No copy number left after filtering, exit now")
+          q(save="no", status=0)
+        }
+
+
+        return(r)
+}
+
+########################################################################
 # Conversion functions borrowed from dpclust3p
 ########################################################################
 
@@ -254,20 +308,20 @@ pcawg11_output = function(snv_mtimer, indel_mtimer, sv_mtimer, MCN, MCN_indel, M
   ###################################################
   # Assignments
   ###################################################
-  snv_assignments = data.frame(chr=as.character(seqnames(vcf_snv)), pos=as.numeric(start(vcf_snv)), cluster=snv_mtimer$plot_data$cluster)
+  snv_assignments = data.frame(chr=as.character(seqnames(vcf_snv)), pos=as.numeric(start(vcf_snv)), cluster=snv_mtimer$plot_data$cluster, stringsAsFactors=F)
   if (!is.null(indel_mtimer)) {
-    indel_assignments = data.frame(chr=as.character(seqnames(vcf_indel)), pos=as.numeric(start(vcf_indel)), cluster=indel_mtimer$plot_data$cluster)
+    indel_assignments = data.frame(chr=as.character(seqnames(vcf_indel)), pos=as.numeric(start(vcf_indel)), cluster=indel_mtimer$plot_data$cluster, stringsAsFactors=F)
   } else {
     indel_assignments = NULL
   }
   if (!is.null(vcf_sv)) {
-    sv_assignments = data.frame(chr=info(vcf_sv)$chr1, pos=info(vcf_sv)$pos1, chr2=info(vcf_sv)$chr2, pos2=info(vcf_sv)$pos2, cluster=sv_mtimer$plot_data$cluster, id=info(vcf_sv)$id)
+    sv_assignments = data.frame(chr=info(vcf_sv)$chr1, pos=info(vcf_sv)$pos1, chr2=info(vcf_sv)$chr2, pos2=info(vcf_sv)$pos2, cluster=sv_mtimer$plot_data$cluster, id=info(vcf_sv)$id, stringsAsFactors=F)
   } else {
     sv_assignments = NULL
   }
   
   if (!is.null(vcf_sv_alt)) {
-    sv_alt_assignments = data.frame(chr=info(vcf_sv_alt)$chr2, pos=info(vcf_sv_alt)$pos2, chr2=info(vcf_sv_alt)$chr1, pos2=info(vcf_sv_alt)$pos1, cluster=sv_alt_mtimer$plot_data$cluster, id=info(vcf_sv_alt)$id)
+    sv_alt_assignments = data.frame(chr=info(vcf_sv_alt)$chr2, pos=info(vcf_sv_alt)$pos2, chr2=info(vcf_sv_alt)$chr1, pos2=info(vcf_sv_alt)$pos1, cluster=sv_alt_mtimer$plot_data$cluster, id=info(vcf_sv_alt)$id, stringsAsFactors=F)
   } else {
     sv_alt_assignments = NULL
   }
@@ -278,13 +332,13 @@ pcawg11_output = function(snv_mtimer, indel_mtimer, sv_mtimer, MCN, MCN_indel, M
   snv_mult = data.frame(chr=snv_assignments$chr, 
                         pos=snv_assignments$pos, 
                         tumour_copynumber=MCN$D$MajCN+MCN$D$MinCN, 
-                        multiplicity=MCN$D$MutCN, multiplicity_options=NA, probabilities=NA)
+                        multiplicity=MCN$D$MutCN, multiplicity_options=NA, probabilities=NA, stringsAsFactors=F)
   
   if (!is.null(indel_mtimer) && nrow(indel_assignments) > 0) {
     indel_mult = data.frame(chr=indel_assignments$chr, 
                           pos=indel_assignments$pos, 
                           tumour_copynumber=MCN_indel$D$MajCN+MCN_indel$D$MinCN, 
-                          multiplicity=MCN_indel$D$MutCN, multiplicity_options=NA, probabilities=NA)
+                          multiplicity=MCN_indel$D$MutCN, multiplicity_options=NA, probabilities=NA, stringsAsFactors=F)
   } else {
     indel_mult = NULL
   }
@@ -295,7 +349,7 @@ pcawg11_output = function(snv_mtimer, indel_mtimer, sv_mtimer, MCN, MCN_indel, M
                             chr2=sv_assignments$chr2,
                             pos2=sv_assignments$pos2,
                             tumour_copynumber=MCN_sv$D$MajCN+MCN_sv$D$MinCN, 
-                            multiplicity=MCN_sv$D$MutCN, multiplicity_options=NA, probabilities=NA)
+                            multiplicity=MCN_sv$D$MutCN, multiplicity_options=NA, probabilities=NA, stringsAsFactors=F)
   } else {
     sv_mult = NULL
   }
@@ -306,7 +360,7 @@ pcawg11_output = function(snv_mtimer, indel_mtimer, sv_mtimer, MCN, MCN_indel, M
                          chr2=sv_alt_assignments$chr2,
                          pos2=sv_alt_assignments$pos2,
                          tumour_copynumber=MCN_sv_alt$D$MajCN+MCN_sv_alt$D$MinCN, 
-                         multiplicity=MCN_sv_alt$D$MutCN, multiplicity_options=NA, probabilities=NA)
+                         multiplicity=MCN_sv_alt$D$MutCN, multiplicity_options=NA, probabilities=NA, stringsAsFactors=F)
   } else {
     sv_alt_mult = NULL
   }
@@ -435,6 +489,11 @@ pcawg11_output = function(snv_mtimer, indel_mtimer, sv_mtimer, MCN, MCN_indel, M
 copynumber_at_sv_locations = function(bb, vcf_sv) {
   temp_bb = rep(bb[1,c("total_cn", "major_cn", "minor_cn", "clonal_frequency")], length(vcf_sv))
   for (i in 1:length(vcf_sv)) {
+
+    # Catch rare case where there is no copy number for Y, but there is an SV on Y
+    if (!as.character(seqnames(vcf_sv)[i]) %in% seqlevels(temp_bb)) {
+    	seqlevels(temp_bb) = c(seqlevels(temp_bb), "Y")
+    }
     seqnames(temp_bb)[i] = seqnames(vcf_sv)[i]
     # assign seg boundaries in right order as to not create negative length segments
     if (end(temp_bb[i]) < start(vcf_sv)[i]) {
@@ -513,7 +572,7 @@ prepare_svclone_output = function(svclone_file, vcf_template, genome, take_prefe
       # save the original position, and renumber the position with the row index. it cannot be guaranteed that 
       # pos1, pos2, original_pos1 or original_pos2 are unique. Hence the renumbering      
       original_pos[i] = dat$original_pos1[i]
-      sv_chrom_pos = rbind(sv_chrom_pos, data.frame(chrom=as.character(dat$chr1[i]), pos=i))
+      sv_chrom_pos = rbind(sv_chrom_pos, data.frame(chrom=as.character(dat$chr1[i]), pos=i, stringsAsFactors=F))
       WTCount[i] = dat$adjusted_norm1[i]
       ids[i] = dat$original_ID[i]
     } else if ((dat$preferred_side[i]==1 & take_preferred_breakpoint) | (dat$preferred_side[i]==0 & !take_preferred_breakpoint)) {
@@ -526,7 +585,7 @@ prepare_svclone_output = function(svclone_file, vcf_template, genome, take_prefe
       # save the original position, and renumber the position with the row index. it cannot be guaranteed that
       # pos1, pos2, original_pos1 or original_pos2 are unique. Hence the renumbering
       original_pos[i] = dat$original_pos2[i]
-      sv_chrom_pos = rbind(sv_chrom_pos, data.frame(chrom=as.character(dat$chr2[i]), pos=i))
+      sv_chrom_pos = rbind(sv_chrom_pos, data.frame(chrom=as.character(dat$chr2[i]), pos=i, stringsAsFactors=F))
       WTCount[i] = dat$adjusted_norm2[i]
       # replace XYZ1_1 with XYZ1_2 or XYZ1_2 with XYZ1_1
       ids[i] = ifelse(grepl("_1", dat$original_ID[i]), gsub("_1", "_2", dat$original_ID[i]), gsub("_2", "_1", dat$original_ID[i]))
@@ -535,7 +594,7 @@ prepare_svclone_output = function(svclone_file, vcf_template, genome, take_prefe
   
   # Now push this into a VCF format with just alt and ref counts
   v <- readVcf(snv_vcf_file, genome=genome)
-  d = data.frame(chromosome=sv_chrom_pos$chrom, position=sv_chrom_pos$pos)
+  d = data.frame(chromosome=sv_chrom_pos$chrom, position=sv_chrom_pos$pos, stringsAsFactors=F)
   d.gr = makeGRangesFromDataFrame(d, start.field="position", end.field="position")
   d.info = DataFrame(t_alt_count=mutCount, t_ref_count=WTCount, chr1=dat$chr1, pos1=dat$original_pos1, chr2=dat$chr2, pos2=dat$original_pos2, id=ids, major_cn=major_cn, minor_cn=minor_cn, original_pos=original_pos)
   d.v = VCF(rowRanges=d.gr, exptData=metadata(v), geno=geno(v), fixed=rep(fixed(v)[1,], nrow(d)), colData=colData(v), info=d.info)
@@ -777,6 +836,11 @@ write_output_summary_table = function(structure_df, outdir, samplename, project,
 #' @param min_snvs_assign_change Minimum number of SNVs to change between two iterations, fewer than this number stops EM (Default: 10)
 #' @return A vector with the estimated cluster locations
 estimate_cluster_size = function(cluster_locations, vcf, bb, purity, sex, is_wgd, rho_snv, xmin, deltaFreq, max_iters=10, min_snvs_assign_change=10) {
+
+  if (length(vcf)==0) {
+	  return(rep(0, length(cluster_locations)))
+  }
+
   # estimate_cluster_size(clusters$ccf, vcf_indel, bb, purity, sex, is_wgd, rho_snv, xmin, deltaFreq)
   alt_count = getAltCount(vcf)
   wt_count = getTumorDepth(vcf)-alt_count
