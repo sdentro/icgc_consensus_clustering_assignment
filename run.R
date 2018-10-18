@@ -81,7 +81,7 @@ if (!is.null(opt$sv_map)) {
 	}
 }
 
-if (is.null(libpath) | is.null(samplename) | is.null(outdir) | is.null(snv_vcf_file) | is.null(bb_file) | is.null(clust_file) | is.null(purity_file) | is.null(summary_table_file)) {
+if (is.null(libpath) | is.null(samplename) | is.null(outdir) | is.null(snv_vcf_file) | is.null(bb_file) | is.null(clust_file) | is.null(purity) | is.null(ploidy) | is.null(sex) | is.null(summary_table_file)) {
   print_help(opt_parser)
   stop("Missing required parameters\n", call.=FALSE)
 }
