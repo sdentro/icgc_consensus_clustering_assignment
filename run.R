@@ -431,7 +431,11 @@ if (!is.null(vcf_sv)) {
   sv_assignment_table = NULL
 }
 sample_entry = get_summary_table_entry(samplename=samplename, 
-                                       summary_table=summary_table, 
+                                       summary_table=summary_table,
+                                       purity=purity, 
+                                       ploidy=ploidy, 
+                                       sex=sex, 
+                                       is_wgd=is_wgd,
                                        cluster_info=snv_mtimer$clusters_new, 
                                        snv_assignment_table=snv_mtimer$plot_data, 
                                        indel_assignment_table=indel_mtimer$plot_data, 
