@@ -5,9 +5,7 @@
 # and two SVclone files with SV mappings (can be NA as well)
 #
 # Out of the box it cannot handle subclonal copy number without introducing additional cluster locations
-# so there are to switches: To round subclonal copy number or to remove it.
-#
-# This approach produces 
+# so there are switches: To round subclonal copy number or to remove it.
 #
 
 ########################################################################
@@ -26,9 +24,7 @@ option_list = list(
   make_option(c("--pur"), type="numeric", default=NULL, help="Sample purity", metavar="character"),
   make_option(c("--ploi"), type="numeric", default=NULL, help="Sample ploidy", metavar="character"),
   make_option(c("--iswgd"), type="logical", action="store_true", default=FALSE, help="Provide when the sample has undergone a whole genome doubling", metavar="character"),
-  make_option(c("--summ"), type="character", default=NULL, help="Summary table", metavar="character"),
   make_option(c("--sv_vaf"), type="character", default=NULL, help="SVclone VAF file", metavar="character"),
-  make_option(c("--sv_map"), type="character", default=NULL, help="SVclone ID mapping file", metavar="character"),
   make_option(c("--round_subclonal_cna"), default=FALSE, type="logical", help="Round subclonal CNAs", metavar="logical", action="store_true"),
   make_option(c("--remove_subclonal_cna"), default=FALSE, type="logical", help="Remove subclonal CNAs", metavar="logical", action="store_true"),
   make_option(c("--sex"), type="character", default=NULL, help="Sex of the donor", metavar="character")
@@ -43,11 +39,9 @@ outdir = opt$outputdir
 snv_vcf_file = opt$snv
 bb_file = opt$cna
 clust_file = opt$struct
-# purity_file = opt$pur
 purity = opt$pur
 ploidy = opt$ploi
 is_wgd = opt$iswgd
-summary_table_file = opt$summ
 round_subclonal_cna = opt$round_subclonal_cna
 remove_subclones = opt$remove_subclonal_cna
 sex = opt$sex
@@ -74,13 +68,7 @@ if (!is.null(opt$sv_vaf)) {
 	}
 }
 
-svid_map_file = NULL
-if (!is.null(opt$sv_map)) {
-	if (opt$sv_map!="NA") {
-		svid_map_file = opt$sv_map
-	}
-}
-
+# check everything is there
 if (is.null(libpath) | is.null(samplename) | is.null(outdir) | is.null(snv_vcf_file) | is.null(bb_file) | is.null(clust_file) | is.null(purity) | is.null(ploidy) | is.null(sex) | is.null(summary_table_file)) {
   print_help(opt_parser)
   stop("Missing required parameters\n", call.=FALSE)
@@ -91,50 +79,21 @@ if (round_subclonal_cna & remove_subclones) {
 }
 
 
-
-do_load = F
-if (do_load) {
-	load(file.path("output_wm", paste0(samplename, "_assignment.RData")))
-}
-
+# parameters
 merge_clusters = T
 filter_small_clusters = F # only for summary table entry
 deltaFreq <- 0.00 # merge clusters withing deltaFreq
 min_read_diff = 2 # merge clusters within this number of mutant reads
 xmin = 0
-project = NA
 
 vcf_template = file.path(libpath, "template_icgc_consensus.vcf")
 
-# samplename = "55e520f4-0e4b-41a2-9951-c4e9f323100b"
-# cons_method = "wm"
-# clust_postfix = ".txt"
-# outdir = paste0("output_", cons_method, "/")
-# snv_vcf_file = paste0("../..//processed_data/consensusCalls/consensusCalls_2016_10_12/filtered/", samplename, ".consensus.20160830.somatic.snv_mnv.vcf.gz")
-# indel_vcf_file = paste0("../..//processed_data/consensusCalls/consensusCalls_2016_10_12/indel/", samplename, ".consensus.20161006.somatic.indel.vcf.gz")
-# sv_vcf_file = paste0("../../processed_data/consensusSVs/pcawg_consensus_1.5.160912/", samplename, ".pcawg_consensus_1.5.160912.somatic.sv.vcf.gz")
-# bb_file = paste0("../../processed_data/copynumberConsensus/final_consensus_20170119/working_group_output_full_profile/", samplename, "_segments.txt.gz")
-# clust_file = paste0("consensus_clusters_", cons_method, "/", samplename, "_subclonal_structure", clust_postfix)
-# purity_file = "consensus.20170119.purity.ploidy.txt.gz"
-# summary_table = "summary_table_2_20170303.txt"
-# svclone_file = paste0("../../processed_data/sv_vafs_geoff/vafs/sv_vafs/", samplename, "_filtered_svs.tsv")
-# 
-# if (!file.exists(sv_vcf_file)) {
-#   sv_vcf_file = "NA"
-# }
 
-
-#vcf_file = "final/final_consensus_12oct_passonly/snv_mnv/0040b1b6-b07a-4b6e-90ef-133523eaf412.consensus.20160830.somatic.snv_mnv.vcf.gz"
-#bb_file = "dp/20161213_vanloo_wedge_consSNV_prelimConsCNAallStar/4_copynumber/0040b1b6-b07a-4b6e-90ef-133523eaf412_segments.txt.gz"
-#clust_file = "dp/20161213_vanloo_wedge_consSNV_prelimConsCNAallStar/2_subclones/0040b1b6-b07a-4b6e-90ef-133523eaf412_subclonal_structure.txt.gz"
-#purity_file = "dp/20161213_vanloo_wedge_consSNV_prelimConsCNAallStar/1_purity_ploidy/purity_ploidy.txt"
-
-#source(file.path(libpath, "MutationTime.R"))
-##UNCOMMENT
+##UNCOMMENT for testing with old mtimer
+library(MutationTimeR)
 #source("~/repo/MutationTime.R/MutationTime.R")
 #source("~/repo/icgc_consensus_clustering_assignment//MutationTime.R")
-library(MutationTimeR)
-source(file.path(libpath, "util.R"))
+source(file.path(libpath, "util.R")) # this must occur after loading mtimer as it overloads the loadBB function
 library(ggplot2)
 library(gridExtra)
 library(grid)
@@ -148,7 +107,7 @@ q = 0.05
 ########################################################################
 # Parse the input
 ########################################################################
-#UNCOMMENT
+#UNCOMMENT for testing with old mtimer
 bb = loadBB(bb_file, round_subclones=round_subclonal_cna, remove_subclones=remove_subclones)
 #bb = loadBB(bb_file)
 clusters = read.table(clust_file, header=TRUE, sep="\t")
@@ -168,6 +127,7 @@ if (any(colnames(clusters)=="n_ssm")) {
   colnames(clusters)[colnames(clusters)=="n_ssm"] = "n_ssms"
 }
 
+# Read in VCF files
 vcf_snv = readVcf(snv_vcf_file, genome="GRCh37")
 if (is.null(indel_vcf_file)) {
 	vcf_indel = NULL
@@ -182,46 +142,34 @@ if (is.null(svclone_file) | is.null(svclone_file)) {
   vcf_sv_alt = prepare_svclone_output(svclone_file, vcf_template, genome="GRCh37", take_preferred_breakpoint=F)
 }
 
-# purityPloidy = read.table(purity_file, header=TRUE, sep="\t")
-# purity = purityPloidy$purity[purityPloidy$samplename==samplename]
-# ploidy = purityPloidy$ploidy[purityPloidy$samplename==samplename]
+# Annotate copy number cell frequencies
 if ("ccf" %in% colnames(elementMetadata(bb))) {
 	bb$clonal_frequency = purity*bb$ccf
 } else {
 	bb$clonal_frequency = purity
 }
 
-summary_table = read.table(summary_table_file, header=T, stringsAsFactors=F)
-# if ("wgd_status" %in% colnames(purityPloidy)) {
-#   is_wgd = purityPloidy$wgd_status[purityPloidy$samplename==samplename]=="wgd"
-# } else {
-#   print("Expected a column named wgd_status with items either wgd or no_wgd")
-#   q(save="no", status=1)
-# }
-
-#' If not all clusters are there we need to renumber them
+# If not all clusters are there we need to renumber them
 if (max(clusters$cluster) > nrow(clusters)) {
-	# dpc_assign_input = dpc_assign
 	for (i in 1:nrow(clusters)) {
 		clusterid = clusters$cluster[i]
 		clusters$cluster[i] = i
 	}
 }	
 
-#' Calculate CCF for each cluster
+# Calculate CCF for each cluster
 clusters$ccf = clusters$proportion/purity
 
-#' Alt merge clusters
+# Alt merge clusters
 if (merge_clusters & nrow(clusters) > 1) { clusters = mergeClustersByMutreadDiff(clusters, purity, ploidy, vcf_snv, min_read_diff) }
 
 ########################################################################
 # Assignments
 ########################################################################
-#' Assign using Moritz' approach
+# Assign using Moritz' approach
 if (!do_load) {
 	MCN <- computeMutCn(vcf_snv, bb, clusters, purity, gender=sex, isWgd=is_wgd, rho=rho_snv, n.boot=0, xmin=xmin, deltaFreq=deltaFreq)
-	# Save priors for mutation copy number - commented out because priors are not pre-calculated when there are no SNVs on a segment, which yields no probabilities for indels and SVs on such a segment
-	#bb$timing_param <- MCN$P
+
 	if (!is.null(vcf_indel)) {
 	  temp = clusters
 	  temp$n_ssms = estimate_cluster_size(clusters$ccf, vcf_indel, bb, purity, sex, is_wgd, rho_snv, xmin, deltaFreq)
@@ -358,8 +306,6 @@ if (!is.null(vcf_sv)) {
                            stringsAsFactors=F)
     sv_timing = rbind(sv_timing, sv_alt_timing)
   } else {
-    # When no alt allele is provided we want to add the second SV breakpoint by copying the details of the first
-    
     # Remap SVs into their correct position
     res = remap_svs(sv_vcf_file, svclone_file, final_pcawg11_output$sv_assignments, final_pcawg11_output$sv_assignments_prob, sv_timing)
     final_pcawg11_output$sv_assignments = res$sv_assignments
@@ -431,7 +377,6 @@ if (!is.null(vcf_sv)) {
   sv_assignment_table = NULL
 }
 sample_entry = get_summary_table_entry(samplename=samplename, 
-                                       summary_table=summary_table,
                                        purity=purity, 
                                        ploidy=ploidy, 
                                        sex=sex, 
@@ -526,14 +471,13 @@ if (!is.null(vcf_sv) && any(!is.na(sv_mtimer$plot_data$ccf)) && any(sv_mtimer$pl
 }
 p6 = base_plot(all_data, "ccf", "All data", fill="type") + xlim(0, 1.5) + geom_vline(data=clusters, mapping=aes(xintercept=ccf)) + xlab("ccf")
 
-# my_legend = g_legend(p)
-if (samplename %in% summary_table$samplename) {
-  power = summary_table$nrpcc[summary_table$samplename==samplename]
-  histology = summary_table$histology_abbreviation[summary_table$samplename==samplename]
-} else {
+# if (samplename %in% summary_table$samplename) {
+#   power = summary_table$nrpcc[summary_table$samplename==samplename]
+#   histology = summary_table$histology_abbreviation[summary_table$samplename==samplename]
+# } else {
   power = NA
   histology = NA
-}
+# }
 title = paste0(samplename, " - ",
                histology, " - ",
                "SNVs ", nrow(snv_binom$plot_data), " - ",
@@ -546,68 +490,31 @@ png(file.path(outdir, paste0(samplename, "_final_assignment.png")), height=400, 
 grid.arrange(p6, p, p3, p4, p5, nrow=1, top=title)
 dev.off()
 
-# No longer used
-# #' DPClust output - sync the data frames
-# assign_chr_pos = paste0(dpc_assign$chr, "_", dpc_assign$pos)
-# mult_chr_pos = paste0(mult$chr, "_", mult$pos)
-# inboth = intersect(mult_chr_pos, assign_chr_pos)
-# dpc_assign = dpc_assign[assign_chr_pos %in% inboth,]
-# mult = mult[mult_chr_pos %in% inboth,]
-# 
-# 
-# ccf = mult$mutation.copy.number / mult$multiplicity
-# plot_data_4 = data.frame(mcn=mult$mutation.copy.number, ccf=ccf, cluster=factor(dpc_assign$cluster, levels=rev(unique(sort(clusters$cluster)))))
-# p4 = base_plot(plot_data_4, "ccf", "DPClust assignment") + xlim(0, 1.5) + geom_vline(data=clusters, mapping=aes(xintercept=ccf))
-# 
-# 
-# png(paste0(samplename, "_final_assignment_all.png"), height=800, width=1000)
-# grid.arrange(arrangeGrob(p + theme(legend.position="none"), 
-# 			 p3 + theme(legend.position="none"),
-# 			 p4 + theme(legend.position="none"),
-# 			 p2 + theme(legend.position="none"), ncol=2), 
-# 	     arrangeGrob(my_legend), nrow=2, heights=c(18,1), top=title)
-# dev.off()
 
 # produce pcawg wide output
-  subcl_struct = final_pcawg11_output$final_clusters[,c("cluster", "proportion", "ccf", "n_snvs", "n_indels", "n_svs")]
-  colnames(subcl_struct)[2] = "fraction_total_cells"
-  colnames(subcl_struct)[3] = "fraction_cancer_cells"
+subcl_struct = final_pcawg11_output$final_clusters[,c("cluster", "proportion", "ccf", "n_snvs", "n_indels", "n_svs")]
+colnames(subcl_struct)[2] = "fraction_total_cells"
+colnames(subcl_struct)[3] = "fraction_cancer_cells"
 
-  if (!is.null(vcf_sv)) {
-    # Bug in pipeline, fixed post-hoc
-    sv_output = data.frame(chromosome=final_pcawg11_output$sv_assignments_prob$chr,
-                           position=final_pcawg11_output$sv_assignments_prob$pos,
-                           mut_type=rep("SV", nrow(final_pcawg11_output$sv_assignments_prob)),
-                           final_pcawg11_output$sv_assignments_prob[, grepl("cluster", colnames(final_pcawg11_output$sv_assignments_prob)), drop=F],
-                           chromosome2=final_pcawg11_output$sv_assignments_prob$chr2,
-                           position2=final_pcawg11_output$sv_assignments_prob$pos2,
-			   svid=final_pcawg11_output$sv_assignments$id,
-                           stringsAsFactors=F)
-    assign_probs = do.call(rbind, list(snv_output, indel_output, sv_output))
-  }
+if (!is.null(vcf_sv)) {
+  # Bug in pipeline, fixed post-hoc
+  sv_output = data.frame(chromosome=final_pcawg11_output$sv_assignments_prob$chr,
+                         position=final_pcawg11_output$sv_assignments_prob$pos,
+                         mut_type=rep("SV", nrow(final_pcawg11_output$sv_assignments_prob)),
+                         final_pcawg11_output$sv_assignments_prob[, grepl("cluster", colnames(final_pcawg11_output$sv_assignments_prob)), drop=F],
+                         chromosome2=final_pcawg11_output$sv_assignments_prob$chr2,
+                         position2=final_pcawg11_output$sv_assignments_prob$pos2,
+		   svid=final_pcawg11_output$sv_assignments$id,
+                         stringsAsFactors=F)
+  assign_probs = do.call(rbind, list(snv_output, indel_output, sv_output))
+}
 
-  for (i in which(is.na(timing$timing))) {
-    assign_probs[i, grepl("cluster", colnames(assign_probs))] = NA
-  }
+for (i in which(is.na(timing$timing))) {
+  assign_probs[i, grepl("cluster", colnames(assign_probs))] = NA
+}
 
-  write.table(subcl_struct, file=file.path(outdir, paste0(samplename, "_subclonal_structure.txt")), quote=F, row.names=F, sep="\t")
-  write.table(assign_probs, file=file.path(outdir, paste0(samplename, "_cluster_assignments.txt")), quote=F, row.names=F, sep="\t")
-  write.table(timing, file=file.path(outdir, paste0(samplename, "_mutation_timing.txt")), quote=F, row.names=F, sep="\t")
-  save.image(file.path(outdir, paste0(samplename, "_assignment.RData")))
+write.table(subcl_struct, file=file.path(outdir, paste0(samplename, "_subclonal_structure.txt")), quote=F, row.names=F, sep="\t")
+write.table(assign_probs, file=file.path(outdir, paste0(samplename, "_cluster_assignments.txt")), quote=F, row.names=F, sep="\t")
+write.table(timing, file=file.path(outdir, paste0(samplename, "_mutation_timing.txt")), quote=F, row.names=F, sep="\t")
+save.image(file.path(outdir, paste0(samplename, "_assignment.RData")))
 
-
-   #write_output_summary_table(subcl_struct, outdir, samplename, project, purity)
-
-
-  #if (make_plot) {
-  #png(file.path(paste0(samplename, "_qq.png")), height=500, width=1800)
-  ##if (!is.null(vcf_sv) && !all(is.na(MCN_sv$D$pMutCNTail))) {
-  #if (has_indel & has_sv) {
-  #      grid.arrange(qqnorm(qnorm(MCN$D$pMutCNTail[!is.na(MCN$D$pMutCNTail)])), qqnorm(qnorm(MCN_indel$D$pMutCNTail[!is.na(MCN_indel$D$pMutCNTail)])), qqnorm(qnorm(MCN_sv$D$pMutCNTail[!is.na(MCN_sv$D$pMutCNTail)])), nrow=1, top=samplename)
-  #} else if (!has_indel & !has_sv) {
-  #        grid.arrange(qqnorm(qnorm(MCN$D$pMutCNTail[!is.na(MCN$D$pMutCNTail)])), make_dummy_figure(), make_dummy_figure(), nrow=1, top=samplename)
-  #} else {
-  #      grid.arrange(qqnorm(qnorm(MCN$D$pMutCNTail[!is.na(MCN$D$pMutCNTail)])), qqnorm(qnorm(MCN_indel$D$pMutCNTail[!is.na(MCN_indel$D$pMutCNTail)])), make_dummy_figure(), nrow=1, top=samplename)
-  #}
-  #dev.off()
-  #}

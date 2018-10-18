@@ -258,8 +258,7 @@ FRAC_SNVS_CLUSTER = 0.01
 #' 
 #' @return 
 #' @author sd11
-get_summary_table_entry = function(samplename, summary_table, cluster_info, snv_assignment_table, purity, ploidy, sex, is_wgd, indel_assignment_table=NULL, sv_assignment_table=NULL, do_filter=T) {
-  # sample_entry = summary_table[summary_table$samplename==samplename, ,drop=F]
+get_summary_table_entry = function(samplename, cluster_info, snv_assignment_table, purity, ploidy, sex, is_wgd, indel_assignment_table=NULL, sv_assignment_table=NULL, do_filter=T) {
   sample_entry = data.frame(samplename = samplename, purity = purity, ploidy = ploidy, sex = sex, wgd_status = ifelse(is_wgd, "wgd", "no_wgd"), stringsAsFactors=F)
   # temp because using old summary table
   sample_entry$num_subclones = 0
