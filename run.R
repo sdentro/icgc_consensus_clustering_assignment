@@ -69,7 +69,7 @@ if (!is.null(opt$sv_vaf)) {
 }
 
 # check everything is there
-if (is.null(libpath) | is.null(samplename) | is.null(outdir) | is.null(snv_vcf_file) | is.null(bb_file) | is.null(clust_file) | is.null(purity) | is.null(ploidy) | is.null(sex) | is.null(summary_table_file)) {
+if (is.null(libpath) | is.null(samplename) | is.null(outdir) | is.null(snv_vcf_file) | is.null(bb_file) | is.null(clust_file) | is.null(purity) | is.null(ploidy) | is.null(sex)) {
   print_help(opt_parser)
   stop("Missing required parameters\n", call.=FALSE)
 }
@@ -167,7 +167,6 @@ if (merge_clusters & nrow(clusters) > 1) { clusters = mergeClustersByMutreadDiff
 # Assignments
 ########################################################################
 # Assign using Moritz' approach
-if (!do_load) {
 	MCN <- computeMutCn(vcf_snv, bb, clusters, purity, gender=sex, isWgd=is_wgd, rho=rho_snv, n.boot=0, xmin=xmin, deltaFreq=deltaFreq)
 
 	if (!is.null(vcf_indel)) {
@@ -175,9 +174,6 @@ if (!do_load) {
 	  temp$n_ssms = estimate_cluster_size(clusters$ccf, vcf_indel, bb, purity, sex, is_wgd, rho_snv, xmin, deltaFreq)
 		MCN_indel <- computeMutCn(vcf_indel, bb, temp, purity, gender=sex, isWgd=is_wgd, rho=rho_indel, n.boot=0, xmin=xmin, deltaFreq=deltaFreq)
 	}
-} else {
-	bb$timing_param <- MCN$P
-}
 
 if (!is.null(vcf_sv)) {
   # SVclone has mapped SVs to particular copy number segments. This may not directly correspond to the
