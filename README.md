@@ -4,14 +4,6 @@
 
 This repo contains code used to assign mutations (SNV, indel and SV) to consensus mutation clusters from subclonal reconstruction methods.
 
-<<<<<<< HEAD
- 
-=======
-## General procedure
-
-
-
->>>>>>> 56f29f01cd565996d8d167625c6ea19fbfb0e4d8
 ## Dependencies
 
 Software packages used to develop the code and run the pipeline on the PCAWG dataset. Installation of these packages should normally take a few minutes via Bioconductor.
@@ -45,10 +37,13 @@ R --no-save --no-restore --vanilla -f run.R --args \
 --cna [PCAWG consensus copy number profile] \
 --struct [sample subclonal architecture] \
 --pur [tumour purity] \
+--ploi [tumour ploidy] \
+--sex [donor sex] \
 --summ ${summ_tab} \
 --ind [PCAWG consensus SNV indel file] \
 --sv [PCAWG consensus SV VCF file] \
---sv_vaf [output file from SVclone with VAF values and copy number mapping for each SV]
+--sv_vaf [output file from SVclone with VAF values and copy number mapping for each SV] \
+--iswgd [provide this option when the sample has undergone a whole genome doubling]
 ```
 
 ## Produced output
