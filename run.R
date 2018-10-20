@@ -382,10 +382,13 @@ sample_entry = get_summary_table_entry(samplename=samplename,
                                        sex=sex, 
                                        is_wgd=is_wgd,
                                        cluster_info=snv_mtimer$clusters_new, 
-                                       snv_assignment_table=snv_mtimer$plot_data, 
+                                       # snv_assignment_table=snv_mtimer$plot_data,
+                                       snv_assignment_table=snv_output, 
                                        min_clonal_ccf=min_ccf_clone,
-                                       indel_assignment_table=indel_mtimer$plot_data, 
-                                       sv_assignment_table=sv_assignment_table,
+                                       # indel_assignment_table=indel_mtimer$plot_data, 
+                                       indel_assignment_table=indel_output,
+                                       # sv_assignment_table=sv_assignment_table,
+                                       sv_assignment_table=sv_output,
                                        do_filter=filter_small_clusters)
 sample_entry = data.frame(sample_entry, posthoc_stats, stringsAsFactors=F)
 

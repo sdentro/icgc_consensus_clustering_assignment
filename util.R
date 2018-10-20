@@ -171,7 +171,7 @@ assign_mtimer = function(MCN, clusters, purity) {
 ########################################################################
 
 get_clusters_entry = function(clusters, assignments_table, indel_assignments=NULL, sv_assignments=NULL, min_clonal_ccf=0.9, max_clonal_ccf=1.1, do_filter=T) {
-  assignments = table(assignments_table$cluster)
+  # assignments = table(assignments_table$cluster)
   # if (!is.null(indel_assignments)) { indel_assignments = table(indel_assignments$cluster) }
   # if (!is.null(sv_assignments)) { sv_assignments = table(sv_assignments$cluster) }
   
@@ -188,9 +188,14 @@ get_clusters_entry = function(clusters, assignments_table, indel_assignments=NUL
   #   kept_clusters = names(assignments)[assignments > threshold]
   #   superclones_to_merge = names(assignments)[clusters$location > max_clonal_ccf & clusters$n_ssms < total_muts*FRAC_SNVS_CLUSTER & rep(length(kept_clusters) > 1, length(kept_clusters))]
   # } else {
-  #   kept_clusters = names(assignments)
-  #   superclones_to_merge = c()
+  # kept_clusters = names(assignments)
+  # superclones_to_merge = c()
   # }  
+  snv_assignment_probs = assignments_table[,grepl("cluster_")]
+  if (!is.null(indel_assignments)) { indel_assignment_probs = indel_assignments[,grepl("cluster_")] }
+  if (!is.null(sv_assignments)) { sv_assignment_probs = sv_assignments[,grepl("cluster_")] }
+  kept_clusters = clusters$cluster
+  superclones_to_merge = c()
   
   # Count the number of subclones and SNVs assigned
   num_clonal = 0
@@ -212,29 +217,39 @@ get_clusters_entry = function(clusters, assignments_table, indel_assignments=NUL
     if (clusters[clusters$cluster==cluster,]$ccf > min_clonal_ccf) {
       print("is clonal")
       # Clonal
-      num_clonal = num_clonal + assignments[cluster]
+      # num_clonal = num_clonal + assignments[cluster]
+      num_clonal = num_clonal + sum(snv_assignment_probs[,paste0("cluster_", cluster)], na.rm=T)
       # if (!is.null(indel_assignments)) { indel_clonal = indel_clonal + indel_assignments[cluster] }
-      if (!is.null(indel_assignments)) { indel_clonal = indel_clonal + sum(indel_assignments$cluster==cluster, na.rm=T) }
+      # if (!is.null(indel_assignments)) { indel_clonal = indel_clonal + sum(indel_assignments$cluster==cluster, na.rm=T) }
+      if (!is.null(indel_assignments)) { indel_clonal = indel_clonal + sum(indel_assignment[,paste0("cluster_", cluster)], na.rm=T) }
       # if (!is.null(sv_assignments)) { sv_clonal = sv_clonal + sv_assignments[cluster] }
-      if (!is.null(sv_assignments)) { sv_clonal = sv_clonal + sum(sv_assignments$cluster==cluster, na.rm=T) }
+      # if (!is.null(sv_assignments)) { sv_clonal = sv_clonal + sum(sv_assignments$cluster==cluster, na.rm=T) }
+      if (!is.null(sv_assignments)) { sv_clonal = sv_clonal + sum(sv_assignment[,paste0("cluster_", cluster)], na.rm=T) }
       
       if (clusters[clusters$cluster==cluster,]$ccf > max_clonal_ccf & ! cluster %in% superclones_to_merge) {
         # Superclonal
         num_superclones = num_superclones + 1
-        num_superclonal = num_superclonal + assignments[cluster]
+        # num_superclonal = num_superclonal + assignments[cluster]
         # if (!is.null(indel_assignments)) { indel_superclonal = indel_superclonal + indel_assignments[cluster] }
-        if (!is.null(indel_assignments)) { indel_superclonal = indel_superclonal + sum(indel_assignments$cluster==cluster, na.rm=T) }
-        if (!is.null(sv_assignments)) { sv_superclonal = sv_superclonal + sum(sv_assignments$cluster==cluster, na.rm=T) }
+        # if (!is.null(indel_assignments)) { indel_superclonal = indel_superclonal + sum(indel_assignments$cluster==cluster, na.rm=T) }
+        # if (!is.null(sv_assignments)) { sv_superclonal = sv_superclonal + sum(sv_assignments$cluster==cluster, na.rm=T) }
+        
+        num_superclonal = num_superclonal + sum(snv_assignment_probs[,paste0("cluster_", cluster)], na.rm=T)
+        if (!is.null(indel_assignments)) { indel_superclonal = indel_superclonal + sum(indel_assignment[,paste0("cluster_", cluster)], na.rm=T) }
+        if (!is.null(sv_assignments)) { sv_superclonal = sv_superclonal + sum(sv_assignment[,paste0("cluster_", cluster)], na.rm=T) }
       }
     } else {
       print("is subclonal")
       # Subclonal
-      num_subclonal = num_subclonal + assignments[cluster]
+      # num_subclonal = num_subclonal + assignments[cluster]
+      num_subclonal = num_subclonal + sum(snv_assignment_probs[,paste0("cluster_", cluster)], na.rm=T)
       num_subclones = num_subclones + 1
       # if (!is.null(indel_assignments)) { indel_subclonal = indel_subclonal + indel_assignments[cluster] }
-      if (!is.null(indel_assignments)) { indel_subclonal = indel_subclonal + sum(indel_assignments$cluster==cluster, na.rm=T) }
+      # if (!is.null(indel_assignments)) { indel_subclonal = indel_subclonal + sum(indel_assignments$cluster==cluster, na.rm=T) }
+      if (!is.null(indel_assignments)) { indel_subclonal = indel_subclonal + sum(indel_assignment[,paste0("cluster_", cluster)], na.rm=T) }
       # if (!is.null(sv_assignments)) { sv_subclonal = sv_subclonal + sv_assignments[cluster] }
-      if (!is.null(sv_assignments)) { sv_subclonal = sv_subclonal + sum(sv_assignments$cluster==cluster, na.rm=T) }
+      # if (!is.null(sv_assignments)) { sv_subclonal = sv_subclonal + sum(sv_assignments$cluster==cluster, na.rm=T) }
+      if (!is.null(sv_assignments)) { sv_subclonal = sv_subclonal + sum(sv_assignment[,paste0("cluster_", cluster)], na.rm=T) }
     }
     
     if (! cluster %in% superclones_to_merge) {
