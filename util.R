@@ -191,9 +191,9 @@ get_clusters_entry = function(clusters, assignments_table, indel_assignments=NUL
   # kept_clusters = names(assignments)
   # superclones_to_merge = c()
   # }  
-  snv_assignment_probs = assignments_table[,grepl("cluster_", colnames(assignments_table))]
-  if (!is.null(indel_assignments)) { indel_assignment_probs = indel_assignments[,grepl("cluster_", colnames(indel_assignments))] }
-  if (!is.null(sv_assignments)) { sv_assignment_probs = sv_assignments[,grepl("cluster_", colnames(sv_assignments))] }
+  snv_assignment_probs = assignments_table[,grepl("cluster_", colnames(assignments_table)), drop=F]
+  if (!is.null(indel_assignments)) { indel_assignment_probs = indel_assignments[,grepl("cluster_", colnames(indel_assignments)), drop=F] }
+  if (!is.null(sv_assignments)) { sv_assignment_probs = sv_assignments[,grepl("cluster_", colnames(sv_assignments)), drop=F] }
   kept_clusters = clusters$cluster
   superclones_to_merge = c()
   
