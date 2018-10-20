@@ -84,7 +84,8 @@ merge_clusters = T
 filter_small_clusters = F # only for summary table entry
 deltaFreq <- 0.00 # merge clusters withing deltaFreq
 min_read_diff = 2 # merge clusters within this number of mutant reads
-xmin = 0
+xmin = 0 # overdispersion parameter for beta-binomial distribution
+min_ccf_clone = 0.95 # minimum CCF of the clonal cluster
 
 vcf_template = file.path(libpath, "template_icgc_consensus.vcf")
 
@@ -114,8 +115,6 @@ clusters = read.table(clust_file, header=TRUE, sep="\t")
 
 if (!any(colnames(clusters)=="proportion")) {
 	if (!any(colnames(clusters)=="ccf")) { print("Structure file requires at least proportion or ccf column"); q(save="no") }
-	# purityPloidy = read.table(purity_file, header=TRUE, sep="\t")
-	# purity = purityPloidy$purity[purityPloidy$samplename==samplename]
 	clusters$proportion = clusters$ccf * purity
 }
 
@@ -164,9 +163,6 @@ if (max(clusters$cluster) > nrow(clusters)) {
 		clusters$cluster[i] = i
 	}
 }	
-
-# Calculate CCF for each cluster
-clusters$ccf = clusters$proportion/purity
 
 # Alt merge clusters
 if (merge_clusters & nrow(clusters) > 1) { clusters = mergeClustersByMutreadDiff(clusters, purity, ploidy, vcf_snv, min_read_diff) }
@@ -387,6 +383,7 @@ sample_entry = get_summary_table_entry(samplename=samplename,
                                        is_wgd=is_wgd,
                                        cluster_info=snv_mtimer$clusters_new, 
                                        snv_assignment_table=snv_mtimer$plot_data, 
+                                       min_clonal_ccf=min_ccf_clone,
                                        indel_assignment_table=indel_mtimer$plot_data, 
                                        sv_assignment_table=sv_assignment_table,
                                        do_filter=filter_small_clusters)

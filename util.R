@@ -152,14 +152,10 @@ assign_binom_ll = function(MCN, clusters, purity) {
 #' @return A list containing two data.frames: (1) The mutations with mcn, ccf and assigned cluster and (2) Cluster number, size, proportion and ccf
 #' @author sd11
 assign_mtimer = function(MCN, clusters, purity) {
-  print("ASSIGN START")
-  print(clusters)
   best_cluster = sapply(MCN$D$CNF, function(x) if (is.na(x)) NA else which.min(abs(x-clusters$proportion)))
   cluster_counts = table(factor(best_cluster, levels=clusters$cluster))
   clusters_new_2 = data.frame(clusters$cluster, clusters$proportion, clusters$ccf, sapply(clusters$cluster, function(x) cluster_counts[[as.character(x)]]))
   colnames(clusters_new_2) = colnames(clusters)
-  print("ASSIGN END")
-  print(clusters_new_2)
   
   mcn = mutationBurdenToMutationCopyNumber(burden=MCN$D$altCount / (MCN$D$altCount + MCN$D$wtCount), cellularity=purity, normalCopyNumber=rep(2, nrow(MCN$D)), totalCopyNumber=MCN$D$MajCN + MCN$D$MinCN)
   if (all(is.na(best_cluster))) {
@@ -266,7 +262,7 @@ FRAC_SNVS_CLUSTER = 0.01
 #' 
 #' @return 
 #' @author sd11
-get_summary_table_entry = function(samplename, cluster_info, snv_assignment_table, purity, ploidy, sex, is_wgd, indel_assignment_table=NULL, sv_assignment_table=NULL, do_filter=T) {
+get_summary_table_entry = function(samplename, cluster_info, snv_assignment_table, purity, ploidy, sex, is_wgd, min_clonal_ccf=0.9, indel_assignment_table=NULL, sv_assignment_table=NULL, do_filter=T) {
   sample_entry = data.frame(samplename = samplename, purity = purity, ploidy = ploidy, sex = sex, wgd_status = ifelse(is_wgd, "wgd", "no_wgd"), stringsAsFactors=F)
   # set default values
   sample_entry$num_subclones = 0
@@ -289,6 +285,7 @@ get_summary_table_entry = function(samplename, cluster_info, snv_assignment_tabl
                            snv_assignment_table, 
                            indel_assignments=indel_assignment_table, 
                            sv_assignments=sv_assignment_table,
+                           min_clonal_ccf=min_clonal_ccf,
                            do_filter=do_filter)
   
   # Saving these for later in the script to be appended to the table
