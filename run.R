@@ -337,6 +337,7 @@ if (!is.null(vcf_sv)) {
 
   assign_probs = do.call(rbind, list(snv_output, indel_output, sv_output))
 } else {
+  sv_output = NULL
   timing = rbind(snv_timing, indel_timing)
   assign_probs = rbind(snv_output, indel_output)
 }
