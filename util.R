@@ -175,21 +175,22 @@ get_clusters_entry = function(clusters, assignments_table, indel_assignments=NUL
   # if (!is.null(indel_assignments)) { indel_assignments = table(indel_assignments$cluster) }
   # if (!is.null(sv_assignments)) { sv_assignments = table(sv_assignments$cluster) }
   
-  if (do_filter) {
-    total_muts = sum(assignments)
-    if (total_muts < 100) {
-      threshold = total_muts*FRAC_SNVS_CLUSTER
-    } else {
-      threshold = 30
-    }
-    
-    # kept_clusters = names(assignments)[assignments > (total_muts*FRAC_SNVS_CLUSTER) & assignments > MIN_NUM_SNVS_CLUSTER]
-    kept_clusters = names(assignments)[assignments > threshold]
-    superclones_to_merge = names(assignments)[clusters$location > max_clonal_ccf & clusters$no.of.mutations < total_muts*FRAC_SNVS_CLUSTER & rep(length(kept_clusters) > 1, length(kept_clusters))]
-  } else {
-    kept_clusters = names(assignments)
-    superclones_to_merge = c()
-  }  
+  # if (do_filter) {
+  #   # this code is no longer used
+  #   total_muts = sum(assignments)
+  #   if (total_muts < 100) {
+  #     threshold = total_muts*FRAC_SNVS_CLUSTER
+  #   } else {
+  #     threshold = 30
+  #   }
+  #   
+  #   # kept_clusters = names(assignments)[assignments > (total_muts*FRAC_SNVS_CLUSTER) & assignments > MIN_NUM_SNVS_CLUSTER]
+  #   kept_clusters = names(assignments)[assignments > threshold]
+  #   superclones_to_merge = names(assignments)[clusters$location > max_clonal_ccf & clusters$n_ssms < total_muts*FRAC_SNVS_CLUSTER & rep(length(kept_clusters) > 1, length(kept_clusters))]
+  # } else {
+  #   kept_clusters = names(assignments)
+  #   superclones_to_merge = c()
+  # }  
   
   # Count the number of subclones and SNVs assigned
   num_clonal = 0
@@ -208,7 +209,7 @@ get_clusters_entry = function(clusters, assignments_table, indel_assignments=NUL
   print(clusters)
   for (cluster in rev(kept_clusters)) {
     print(paste0("considering cluster ", cluster))
-    if (clusters[clusters$cluster.no==cluster,]$location > min_clonal_ccf) {
+    if (clusters[clusters$cluster==cluster,]$ccf > min_clonal_ccf) {
       print("is clonal")
       # Clonal
       num_clonal = num_clonal + assignments[cluster]
@@ -217,7 +218,7 @@ get_clusters_entry = function(clusters, assignments_table, indel_assignments=NUL
       # if (!is.null(sv_assignments)) { sv_clonal = sv_clonal + sv_assignments[cluster] }
       if (!is.null(sv_assignments)) { sv_clonal = sv_clonal + sum(sv_assignments$cluster==cluster, na.rm=T) }
       
-      if (clusters[clusters$cluster.no==cluster,]$location > max_clonal_ccf & ! cluster %in% superclones_to_merge) {
+      if (clusters[clusters$cluster==cluster,]$ccf > max_clonal_ccf & ! cluster %in% superclones_to_merge) {
         # Superclonal
         num_superclones = num_superclones + 1
         num_superclonal = num_superclonal + assignments[cluster]
@@ -237,7 +238,7 @@ get_clusters_entry = function(clusters, assignments_table, indel_assignments=NUL
     }
     
     if (! cluster %in% superclones_to_merge) {
-      cluster_locations = c(cluster_locations, clusters[clusters$cluster.no==cluster,]$location)
+      cluster_locations = c(cluster_locations, clusters[clusters$cluster==cluster,]$ccf)
       
       temp_cluster_size = assignments[cluster]
       cluster_sizes = c(cluster_sizes, temp_cluster_size)
@@ -278,7 +279,7 @@ get_summary_table_entry = function(samplename, cluster_info, snv_assignment_tabl
   sample_entry$sv_superclonal = 0
   sample_entry$cluster_locations = NA
   sample_entry$cluster_sizes = NA
-  colnames(cluster_info) = c("cluster.no", "no.of.muts", "proportion", "location")
+  # colnames(cluster_info) = c("cluster.no", "no.of.muts", "proportion", "location")
   
   # Get the values for various SNV cluster related columns
   res = get_clusters_entry(cluster_info, 

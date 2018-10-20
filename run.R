@@ -81,7 +81,7 @@ if (round_subclonal_cna & remove_subclones) {
 
 # parameters
 merge_clusters = T
-filter_small_clusters = F # only for summary table entry
+filter_small_clusters = F # no longer used
 deltaFreq <- 0.00 # merge clusters withing deltaFreq
 min_read_diff = 2 # merge clusters within this number of mutant reads
 xmin = 0 # overdispersion parameter for beta-binomial distribution
