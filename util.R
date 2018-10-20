@@ -152,10 +152,14 @@ assign_binom_ll = function(MCN, clusters, purity) {
 #' @return A list containing two data.frames: (1) The mutations with mcn, ccf and assigned cluster and (2) Cluster number, size, proportion and ccf
 #' @author sd11
 assign_mtimer = function(MCN, clusters, purity) {
+  print("ASSIGN START")
+  print(clusters)
   best_cluster = sapply(MCN$D$CNF, function(x) if (is.na(x)) NA else which.min(abs(x-clusters$proportion)))
   cluster_counts = table(factor(best_cluster, levels=clusters$cluster))
-  clusters_new_2 = data.frame(clusters$cluster, sapply(clusters$cluster, function(x) cluster_counts[[as.character(x)]]), clusters$proportion, clusters$ccf)
+  clusters_new_2 = data.frame(clusters$cluster, clusters$proportion, clusters$ccf, sapply(clusters$cluster, function(x) cluster_counts[[as.character(x)]]))
   colnames(clusters_new_2) = colnames(clusters)
+  print("ASSIGN END")
+  print(clusters_new_2)
   
   mcn = mutationBurdenToMutationCopyNumber(burden=MCN$D$altCount / (MCN$D$altCount + MCN$D$wtCount), cellularity=purity, normalCopyNumber=rep(2, nrow(MCN$D)), totalCopyNumber=MCN$D$MajCN + MCN$D$MinCN)
   if (all(is.na(best_cluster))) {
@@ -264,7 +268,7 @@ FRAC_SNVS_CLUSTER = 0.01
 #' @author sd11
 get_summary_table_entry = function(samplename, cluster_info, snv_assignment_table, purity, ploidy, sex, is_wgd, indel_assignment_table=NULL, sv_assignment_table=NULL, do_filter=T) {
   sample_entry = data.frame(samplename = samplename, purity = purity, ploidy = ploidy, sex = sex, wgd_status = ifelse(is_wgd, "wgd", "no_wgd"), stringsAsFactors=F)
-  # temp because using old summary table
+  # set default values
   sample_entry$num_subclones = 0
   sample_entry$num_clonal = 0
   sample_entry$num_subclonal = 0
@@ -276,6 +280,8 @@ get_summary_table_entry = function(samplename, cluster_info, snv_assignment_tabl
   sample_entry$sv_clonal = 0
   sample_entry$sv_subclonal = 0
   sample_entry$sv_superclonal = 0
+  sample_entry$cluster_locations = NA
+  sample_entry$cluster_sizes = NA
   colnames(cluster_info) = c("cluster.no", "no.of.muts", "proportion", "location")
   
   # Get the values for various SNV cluster related columns
@@ -284,18 +290,13 @@ get_summary_table_entry = function(samplename, cluster_info, snv_assignment_tabl
                            indel_assignments=indel_assignment_table, 
                            sv_assignments=sv_assignment_table,
                            do_filter=do_filter)
-  # clust_stats = lapply(list(res), function(x) x$clust_stats)
   
   # Saving these for later in the script to be appended to the table
   clust_details = lapply(list(res), function(x) x$clust_details)
   
   # Combine into single row matrix and then copy the updated values into the sample_entry
-  # res = as.data.frame(matrix(unlist(clust_stats), ncol=11, byrow=T))
   res = res$clust_stats
-  print(res)
-  # colnames(res) = c("num_subclones", "num_clonal", "num_subclonal", "num_superclones", "num_superclonal", "indel_clonal", "indel_subclonal", "indel_superclonal", "sv_clonal", "sv_subclonal", "sv_superclonal")
   sample_entry[, colnames(sample_entry) %in% colnames(res)] = res
-  print(sample_entry)
   sample_entry$frac_clonal = round(res$num_clonal / (res$num_subclonal+res$num_clonal), 3)
   
   # Append cluster details

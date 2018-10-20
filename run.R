@@ -127,6 +127,9 @@ if (any(colnames(clusters)=="n_ssm")) {
   colnames(clusters)[colnames(clusters)=="n_ssm"] = "n_ssms"
 }
 
+# bring clusters in the expected order of columns
+clusters = clusters[,c("clusters", "proportion", "ccf", "n_ssms")]
+
 # Read in VCF files
 vcf_snv = readVcf(snv_vcf_file, genome="GRCh37")
 if (is.null(indel_vcf_file)) {
