@@ -205,8 +205,11 @@ get_clusters_entry = function(clusters, assignments_table, indel_assignments=NUL
   sv_superclonal = 0
   cluster_locations = c()
   cluster_sizes = c()
+  print(clusters)
   for (cluster in rev(kept_clusters)) {
+    print(paste0("considering cluster ", cluster))
     if (clusters[clusters$cluster.no==cluster,]$location > min_clonal_ccf) {
+      print("is clonal")
       # Clonal
       num_clonal = num_clonal + assignments[cluster]
       # if (!is.null(indel_assignments)) { indel_clonal = indel_clonal + indel_assignments[cluster] }
@@ -223,6 +226,7 @@ get_clusters_entry = function(clusters, assignments_table, indel_assignments=NUL
         if (!is.null(sv_assignments)) { sv_superclonal = sv_superclonal + sum(sv_assignments$cluster==cluster, na.rm=T) }
       }
     } else {
+      print("is subclonal")
       # Subclonal
       num_subclonal = num_subclonal + assignments[cluster]
       num_subclones = num_subclones + 1
@@ -278,7 +282,8 @@ get_summary_table_entry = function(samplename, cluster_info, snv_assignment_tabl
   res = get_clusters_entry(cluster_info, 
                            snv_assignment_table, 
                            indel_assignments=indel_assignment_table, 
-                           sv_assignments=sv_assignment_table)
+                           sv_assignments=sv_assignment_table,
+                           do_filter=do_filter)
   clust_stats = lapply(list(res), function(x) x$clust_stats)
   
   # Saving these for later in the script to be appended to the table
