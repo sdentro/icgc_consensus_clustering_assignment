@@ -243,10 +243,10 @@ get_clusters_entry = function(clusters, assignments_table, indel_assignments=NUL
       cluster_sizes = c(cluster_sizes, temp_cluster_size)
     }
   }
-  return(list(clust_stats=list(num_subclones, 
-                               num_clonal, num_subclonal, num_superclones, num_superclonal, 
-                               indel_clonal, indel_subclonal, indel_superclonal, 
-                               sv_clonal, sv_subclonal, sv_superclonal), 
+  return(list(clust_stats=data.frame(num_subclones=num_subclones, 
+                               num_clonal=num_clonal, num_subclonal=num_subclonal, num_superclones=num_superclones, num_superclonal=num_superclonal, 
+                               indel_clonal=indel_clonal, indel_subclonal=indel_subclonal, indel_superclonal=indel_superclonal, 
+                               sv_clonal=sv_clonal, sv_subclonal=sv_subclonal, sv_superclonal=sv_superclonal), 
               clust_details=list(cluster_locations, cluster_sizes)))
 }
 
@@ -284,15 +284,18 @@ get_summary_table_entry = function(samplename, cluster_info, snv_assignment_tabl
                            indel_assignments=indel_assignment_table, 
                            sv_assignments=sv_assignment_table,
                            do_filter=do_filter)
-  clust_stats = lapply(list(res), function(x) x$clust_stats)
+  # clust_stats = lapply(list(res), function(x) x$clust_stats)
   
   # Saving these for later in the script to be appended to the table
   clust_details = lapply(list(res), function(x) x$clust_details)
   
   # Combine into single row matrix and then copy the updated values into the sample_entry
-  res = as.data.frame(matrix(unlist(clust_stats), ncol=11, byrow=T))
-  colnames(res) = c("num_subclones", "num_clonal", "num_subclonal", "num_superclones", "num_superclonal", "indel_clonal", "indel_subclonal", "indel_superclonal", "sv_clonal", "sv_subclonal", "sv_superclonal")
+  # res = as.data.frame(matrix(unlist(clust_stats), ncol=11, byrow=T))
+  res = res$clust_stats
+  print(res)
+  # colnames(res) = c("num_subclones", "num_clonal", "num_subclonal", "num_superclones", "num_superclonal", "indel_clonal", "indel_subclonal", "indel_superclonal", "sv_clonal", "sv_subclonal", "sv_superclonal")
   sample_entry[, colnames(sample_entry) %in% colnames(res)] = res
+  print(sample_entry)
   sample_entry$frac_clonal = round(res$num_clonal / (res$num_subclonal+res$num_clonal), 3)
   
   # Append cluster details
