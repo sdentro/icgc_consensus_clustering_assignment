@@ -114,14 +114,15 @@ clusters = read.table(clust_file, header=TRUE, sep="\t")
 
 if (!any(colnames(clusters)=="proportion")) {
 	if (!any(colnames(clusters)=="ccf")) { print("Structure file requires at least proportion or ccf column"); q(save="no") }
-	purityPloidy = read.table(purity_file, header=TRUE, sep="\t")
-	purity = purityPloidy$purity[purityPloidy$samplename==samplename]
+	# purityPloidy = read.table(purity_file, header=TRUE, sep="\t")
+	# purity = purityPloidy$purity[purityPloidy$samplename==samplename]
 	clusters$proportion = clusters$ccf * purity
 }
 
-# sort the clusters and renumber
-clusters = clusters[with(clusters, order(proportion, decreasing=T)),]
-clusters$cluster = 1:nrow(clusters)
+if (!any(colnames(clusters)=="ccf")) {
+  clusters$ccf = clusters$proportion / purity
+}
+
 # not al pipeliones adhere to the prescribed standard
 if (any(colnames(clusters)=="n_ssm")) {
   colnames(clusters)[colnames(clusters)=="n_ssm"] = "n_ssms"
@@ -129,6 +130,10 @@ if (any(colnames(clusters)=="n_ssm")) {
 
 # bring clusters in the expected order of columns
 clusters = clusters[,c("cluster", "proportion", "ccf", "n_ssms")]
+
+# sort the clusters and renumber
+clusters = clusters[with(clusters, order(proportion, decreasing=T)),]
+clusters$cluster = 1:nrow(clusters)
 
 # Read in VCF files
 vcf_snv = readVcf(snv_vcf_file, genome="GRCh37")
