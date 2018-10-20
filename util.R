@@ -255,7 +255,8 @@ get_clusters_entry = function(clusters, assignments_table, indel_assignments=NUL
     if (! cluster %in% superclones_to_merge) {
       cluster_locations = c(cluster_locations, clusters[clusters$cluster==cluster,]$ccf)
       
-      temp_cluster_size = assignments[cluster]
+      # temp_cluster_size = assignments[cluster]
+      temp_cluster_size = sum(snv_assignment_probs[,paste0("cluster_", cluster)], na.rm=T)
       cluster_sizes = c(cluster_sizes, temp_cluster_size)
     }
   }
