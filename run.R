@@ -140,6 +140,9 @@ if (is.null(indel_vcf_file)) {
 	vcf_indel = NULL
 } else {
 	vcf_indel = readVcf(indel_vcf_file, genome="GRCh37")
+	if (nrow(vcf_indel)==0) {
+		vcf_indel = NULL
+	}
 }
 if (is.null(svclone_file) | is.null(svclone_file)) {
   vcf_sv = NULL
@@ -147,6 +150,10 @@ if (is.null(svclone_file) | is.null(svclone_file)) {
 } else {
   vcf_sv = prepare_svclone_output(svclone_file, vcf_template, genome="GRCh37")
   vcf_sv_alt = prepare_svclone_output(svclone_file, vcf_template, genome="GRCh37", take_preferred_breakpoint=F)
+  if (nrow(vcf_sv)==0) {
+	  vcf_sv = NULL
+	  vcf_sv_alt = NULL
+  }
 }
 
 # Annotate copy number cell frequencies
@@ -274,8 +281,8 @@ indel_output = data.frame(chromosome=final_pcawg11_output$indel_assignments_prob
                           svid=rep(NA, nrow(MCN_indel$D)),
                           stringsAsFactors=F)
 } else {
-  indel_timing = data.frame()
-  indel_output = data.frame()
+  indel_timing = NULL
+  indel_output = NULL
 }
 
 if (!is.null(vcf_sv)) {
