@@ -329,6 +329,56 @@ if (!is.null(vcf_sv)) {
                          position2=final_pcawg11_output$sv_assignments$pos2, #info(vcf_sv)$pos2,
                          svid=final_pcawg11_output$sv_assignments$id,
                          stringsAsFactors=F)
+  
+  before = colSums(sv_output[, grepl("cluster_", colnames(sv_output))], na.rm=T) / 2
+  masked = c()
+  # assignment probabilties for some sv breakpoint pairs differ a lot. here those are masked, because we don't really know where these belong
+  max_allowed_sv_prob_diff = 0.5
+  for (svid in unlist(lapply(sv_output$svid, function(x) unlist(strsplit(x, "_"))[1]))) {
+    probs_bp_a = sv_output[sv_output$svid==paste0(svid, "_1"), grepl("cluster_", colnames(sv_output))]
+    probs_bp_b = sv_output[sv_output$svid==paste0(svid, "_2"), grepl("cluster_", colnames(sv_output))]
+    prob_diff = mean(as.numeric(abs(probs_bp_a-probs_bp_b)))
+    # mask probabilities of breakpoint pairs that differ by more than the established threshold
+    if (prob_diff > max_allowed_sv_prob_diff | is.na(prob_diff)) {
+      sv_output[grepl(svid, sv_output$svid), grepl("cluster_", colnames(sv_output))] = NA
+      masked = c(masked, svid)
+    }
+  }
+  
+  # recalculate the cluster sizes for SVs - without the masked svs
+  final_pcawg11_output$final_clusters$n_svs = colSums(sv_output[, grepl("cluster_", colnames(sv_output))], na.rm=T) / 2
+  after = colSums(sv_output[, grepl("cluster_", colnames(sv_output))], na.rm=T) / 2
+  compare = as.data.frame(rbind(unlist(before), unlist(after)))
+  compare$samplename = samplename
+  compare$type = c("before", "after")
+  write.table(compare, file=file.path("output", paste0(samplename, "_sv_clustsizeassignments.txt")), quote=F, sep="\t", row.names=F)
+  
+  # compare the cluster size estimates - samples where there is a big discrepancy, we cannot really know
+  max_allowed_size_diff = 0.5
+  # remove masked ?
+  svids = unlist(lapply(info(vcf_sv)$id, function(x) unlist(strsplit(x, "_"))[1]))
+  vcf_sv_nomask = vcf_sv[!unlist(lapply(svids, function(x) x %in% masked)),]
+  temp_bb = copynumber_at_sv_locations(bb, vcf_sv_nomask)
+  sizes_bp_a = estimate_cluster_size(clusters$ccf, vcf_sv_nomask, temp_bb, purity, sex, is_wgd, rho_sv, xmin, deltaFreq)
+  vcf_sv_nomask = vcf_sv_alt[!unlist(lapply(svids, function(x) x %in% masked)),]
+  temp_bb = copynumber_at_sv_locations(bb, vcf_sv_nomask)
+  sizes_bp_b = estimate_cluster_size(clusters$ccf, vcf_sv_nomask, temp_bb, purity, sex, is_wgd, rho_sv, xmin, deltaFreq)
+  
+  sizes_bp_a = sizes_bp_a / sum(sizes_bp_a)
+  sizes_bp_b = sizes_bp_b / sum(sizes_bp_b)
+  size_diff = mean(abs(sizes_bp_a-sizes_bp_b))
+  # if (size_diff > max_allowed_size_diff) {
+  #   sv_output[, grepl("cluster_", colnames(sv_output))] = NA
+  # }
+  summary = as.data.frame(matrix(NA, ncol=length(sizes_bp_a)+1, nrow=2))
+  summary[,1] = samplename
+  summary[1,2:ncol(summary)] = sizes_bp_a
+  summary[2,2:ncol(summary)] = sizes_bp_b
+  colnames(summary) = c("samplename", colnames(sv_output)[grepl("cluster_", colnames(sv_output))])
+  summary$type = c("bp_a", "bp_b")
+  summary$mean_diff = size_diff
+  summary$clonal_diff = abs(sizes_bp_a[1]-sizes_bp_b[1])
+  write.table(summary, file=file.path("output", paste0(samplename, "_sv_clustsizeestimate.txt")), quote=F, sep="\t", row.names=F)
 
 	print(head(snv_timing))
   print(head(indel_timing))
