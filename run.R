@@ -416,7 +416,7 @@ if (!is.null(vcf_sv)) {
 
   assign_probs = do.call(rbind, list(snv_output, indel_output, sv_output))
   # check for negative probabilities
-  if (any(assign_probs[,grepl("cluster_", colnames(assign_probs))] < 0)) {
+  if (any(assign_probs[,grepl("cluster_", colnames(assign_probs))] < 0, na.rm=T)) {
     print("NEGATIVE PROBS")
   }
   
