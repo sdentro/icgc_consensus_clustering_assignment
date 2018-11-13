@@ -349,7 +349,7 @@ if (!is.null(vcf_sv)) {
       } else {
         # if there is a good concordance, combine the two separate estimates into one
         probs_combined = sapply(1:length(probs_bp_a), function(i) mean(c(as.numeric(probs_bp_a[i]), as.numeric(probs_bp_b[i])), na.rm=T))
-        if (sum(probs_combined) != 1) {
+        if (sum(probs_combined) >= (1+.Machine$double.eps)) {
           print(paste0(svid, " probs not equal 1, diff is ", 1-sum(probs_combined)))
         }
         sv_output[sv_output$svid==paste0(svid, "_1"), grepl("cluster_", colnames(sv_output))] = probs_combined
@@ -361,7 +361,7 @@ if (!is.null(vcf_sv)) {
     print("before updating SV clust sizes:")
     print(final_pcawg11_output$final_clusters[,c("cluster", "proportion", "ccf", "n_snvs", "n_indels", "n_svs")])
     final_pcawg11_output$final_clusters[,c("cluster", "proportion", "ccf", "n_snvs", "n_indels", "n_svs")]
-    final_pcawg11_output$final_clusters[,c("n_svs")] = colSums(sv_output[, grepl("cluster_", colnames(sv_output))])
+    final_pcawg11_output$final_clusters[,c("n_svs")] = colSums(sv_output[, grepl("cluster_", colnames(sv_output))], na.rm=T)
     print("after updating SV clust sizes:")
     print(final_pcawg11_output$final_clusters[,c("cluster", "proportion", "ccf", "n_snvs", "n_indels", "n_svs")])
   }
