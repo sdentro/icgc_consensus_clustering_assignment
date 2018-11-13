@@ -348,10 +348,8 @@ if (!is.null(vcf_sv)) {
         masked = c(masked, svid)
       } else {
         # if there is a good concordance, combine the two separate estimates into one
-        probs_combined = sapply(1:length(probs_bp_a), function(i) mean(c(probs_bp_a[i], probs_bp_b[i]), na.rm=T))
-        if (is.na(probs_combined)) {
-          print(paste0(svid, " atleast one of the probs is NA ", probs_bp_a[i], ",", probs_bp_b[i]))
-        } else if (sum(probs_combined) != 1) {
+        probs_combined = sapply(1:length(probs_bp_a), function(i) mean(c(as.numeric(probs_bp_a[i]), as.numeric(probs_bp_b[i])), na.rm=T))
+        if (sum(probs_combined) != 1) {
           print(paste0(svid, " probs not equal 1, diff is ", 1-sum(probs_combined)))
         }
         sv_output[sv_output$svid==paste0(svid, "_1"), grepl("cluster_", colnames(sv_output))] = probs_combined
