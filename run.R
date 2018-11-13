@@ -348,7 +348,7 @@ if (!is.null(vcf_sv)) {
         masked = c(masked, svid)
       } else {
         # if there is a good concordance, combine the two separate estimates into one
-        probs_combined = sapply(1:length(probs_a), function(i) mean(c(probs_a[i], probs_b[i]), na.rm=T))
+        probs_combined = sapply(1:length(probs_bp_a), function(i) mean(c(probs_bp_a[i], probs_bp_b[i]), na.rm=T))
         if (sum(probs_combined) != 1) {
           print(paste0(svid, " probs not equal 1, diff is ", 1-sum(probs_combined)))
         }
