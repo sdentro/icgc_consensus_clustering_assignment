@@ -402,42 +402,30 @@ if (!is.null(vcf_sv)) {
   # summary$clonal_diff = abs(sizes_bp_a[1]-sizes_bp_b[1])
   # write.table(summary, file=file.path("output", paste0(samplename, "_sv_clustsizeestimate.txt")), quote=F, sep="\t", row.names=F)
 
-	print(head(snv_timing))
-  print(head(indel_timing))
-  print(head(sv_timing))
-
-
   timing = do.call(rbind, list(snv_timing, indel_timing, sv_timing))
-
-  print(head(snv_output))
-  print(head(indel_output))
-  print(head(sv_output))
-
-
   assign_probs = do.call(rbind, list(snv_output, indel_output, sv_output))
-  
-  # check for negative probabilities
-  # These can occur naturally due to rounding errors. here we check whether they exist
-  # if a probability is within twice the machine precision we round it of
-  # across pcawg, this occurs for only a single mutation
-  if (any(assign_probs[,grepl("cluster_", colnames(assign_probs))] < 0, na.rm=T)) {
-    
-    all_probs = assign_probs[,grepl("cluster_", colnames(assign_probs))]
-    
-    if (all(all_probs[!is.na(all_probs) & all_probs < 0] > -2*.Machine$double.eps)) {
-      print("Encountered negative probabilities due to rounding")
-      all_probs[!is.na(all_probs) & all_probs < 0] = round(all_probs[!is.na(all_probs) & all_probs < 0])
-      assign_probs[,grepl("cluster_", colnames(assign_probs))] = all_probs
-    } else {
-      stop("Encountered major negative probabilities")
-    }
-  }
-  
   
 } else {
   sv_output = NULL
   timing = rbind(snv_timing, indel_timing)
   assign_probs = rbind(snv_output, indel_output)
+}
+
+# check for negative probabilities
+# These can occur naturally due to rounding errors. here we check whether they exist
+# if a probability is within twice the machine precision we round it of
+# across pcawg, this occurs for only a single mutation
+if (any(assign_probs[,grepl("cluster_", colnames(assign_probs))] < 0, na.rm=T)) {
+  
+  all_probs = assign_probs[,grepl("cluster_", colnames(assign_probs))]
+  
+  if (all(all_probs[!is.na(all_probs) & all_probs < 0] > -2*.Machine$double.eps)) {
+    print("Encountered negative probabilities due to rounding")
+    all_probs[!is.na(all_probs) & all_probs < 0] = round(all_probs[!is.na(all_probs) & all_probs < 0])
+    assign_probs[,grepl("cluster_", colnames(assign_probs))] = all_probs
+  } else {
+    stop("Encountered major negative probabilities")
+  }
 }
 
 ########################################################################
