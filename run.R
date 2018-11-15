@@ -415,9 +415,21 @@ if (!is.null(vcf_sv)) {
 
 
   assign_probs = do.call(rbind, list(snv_output, indel_output, sv_output))
+  
   # check for negative probabilities
+  # These can occur naturally due to rounding errors. here we check whether they exist
+  # if a probability is within twice the machine precision we round it of
+  # across pcawg, this occurs for only a single mutation
   if (any(assign_probs[,grepl("cluster_", colnames(assign_probs))] < 0, na.rm=T)) {
-    print("NEGATIVE PROBS")
+    
+    all_probs = assign_probs[,grepl("cluster_", colnames(assign_probs))]
+    
+    if (all(all_probs[!is.na(all_probs) & all_probs < 0] > -2*.Machine$double.eps)) {
+      print("Encountered negative probabilities due to rounding")
+      all_probs[!is.na(all_probs) & all_probs < 0] = round(all_probs[!is.na(all_probs) & all_probs < 0])
+    } else {
+      stop("Encountered major negative probabilities")
+    }
   }
   
   
