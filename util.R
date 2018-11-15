@@ -183,12 +183,35 @@ get_clusters_entry = function(clusters, assignments_table, indel_assignments=NUL
   num_subclones = 0
   num_superclones = 0
   num_superclonal = 0
-  indel_clonal = ifelse(!is.null(indel_assignments), 0, NA)
-  indel_subclonal = ifelse(!is.null(indel_assignments), 0, NA)
-  indel_superclonal = ifelse(!is.null(indel_assignments), 0, NA)
-  sv_clonal = ifelse(!is.null(sv_assignments), 0, NA)
-  sv_subclonal = ifelse(!is.null(sv_assignments), 0, NA)
-  sv_superclonal = ifelse(!is.null(sv_assignments), 0, NA)
+  
+  # check if there are indels and whether any have probabilities, 
+  # if there arent any we want to return NAs
+  indel_clonal = NA
+  indel_subclonal = NA
+  indel_superclonal = NA
+  has_assignable_indels = FALSE
+  if (!is.null(indel_assignments)) {
+    if (!all(is.na(indel_assignments[, grepl("cluster_", colnames(indel_assignments))]))) {
+      has_assignable_indels = TRUE
+      indel_clonal = 0
+      indel_subclonal = 0
+      indel_superclonal = 0
+    }
+  }
+  
+  sv_clonal = NA
+  sv_subclonal = NA
+  sv_superclonal = NA
+  has_assignable_svs = FALSE
+  if (!is.null(sv_assignments)) {
+    if (!all(is.na(sv_assignments[, grepl("cluster_", colnames(sv_assignments))]))) {
+      has_assignable_svs = TRUE
+      sv_clonal = 0
+      sv_subclonal = 0
+      sv_superclonal = 0
+    }
+  }
+  
   cluster_locations = c()
   cluster_sizes = c()
   
@@ -197,22 +220,22 @@ get_clusters_entry = function(clusters, assignments_table, indel_assignments=NUL
     if (which(clusters$cluster==cluster)==1) {
       # Clonal
       num_clonal = num_clonal + sum(snv_assignment_probs[,paste0("cluster_", cluster)], na.rm=T)
-      if (!is.null(indel_assignments)) { indel_clonal = indel_clonal + sum(indel_assignment_probs[,paste0("cluster_", cluster)], na.rm=T) }
-      if (!is.null(sv_assignments)) { sv_clonal = sv_clonal + sum(sv_assignment_probs[,paste0("cluster_", cluster)], na.rm=T) }
+      if (!is.null(indel_assignments) & has_assignable_indels) { indel_clonal = indel_clonal + sum(indel_assignment_probs[,paste0("cluster_", cluster)], na.rm=T) }
+      if (!is.null(sv_assignments) & has_assignable_svs) { sv_clonal = sv_clonal + sum(sv_assignment_probs[,paste0("cluster_", cluster)], na.rm=T) }
       
       if (clusters[clusters$cluster==cluster,]$ccf > max_clonal_ccf & ! cluster %in% superclones_to_merge) {
         # Superclonal
         num_superclones = num_superclones + 1
         num_superclonal = num_superclonal + sum(snv_assignment_probs[,paste0("cluster_", cluster)], na.rm=T)
-        if (!is.null(indel_assignments)) { indel_superclonal = indel_superclonal + sum(indel_assignment_probs[,paste0("cluster_", cluster)], na.rm=T) }
-        if (!is.null(sv_assignments)) { sv_superclonal = sv_superclonal + sum(sv_assignment_probs[,paste0("cluster_", cluster)], na.rm=T) }
+        if (!is.null(indel_assignments) & has_assignable_indels) { indel_superclonal = indel_superclonal + sum(indel_assignment_probs[,paste0("cluster_", cluster)], na.rm=T) }
+        if (!is.null(sv_assignments) & has_assignable_svs) { sv_superclonal = sv_superclonal + sum(sv_assignment_probs[,paste0("cluster_", cluster)], na.rm=T) }
       }
     } else {
       # Subclonal
       num_subclonal = num_subclonal + sum(snv_assignment_probs[,paste0("cluster_", cluster)], na.rm=T)
       num_subclones = num_subclones + 1
-      if (!is.null(indel_assignments)) { indel_subclonal = indel_subclonal + sum(indel_assignment_probs[,paste0("cluster_", cluster)], na.rm=T) }
-      if (!is.null(sv_assignments)) { sv_subclonal = sv_subclonal + sum(sv_assignment_probs[,paste0("cluster_", cluster)], na.rm=T) }
+      if (!is.null(indel_assignments) & has_assignable_indels) { indel_subclonal = indel_subclonal + sum(indel_assignment_probs[,paste0("cluster_", cluster)], na.rm=T) }
+      if (!is.null(sv_assignments) & has_assignable_svs) { sv_subclonal = sv_subclonal + sum(sv_assignment_probs[,paste0("cluster_", cluster)], na.rm=T) }
     }
     
     if (! cluster %in% superclones_to_merge) {

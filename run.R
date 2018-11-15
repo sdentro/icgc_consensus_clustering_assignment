@@ -361,7 +361,12 @@ if (!is.null(vcf_sv)) {
     print("before updating SV clust sizes:")
     print(final_pcawg11_output$final_clusters[,c("cluster", "proportion", "ccf", "n_snvs", "n_indels", "n_svs")])
     final_pcawg11_output$final_clusters[,c("cluster", "proportion", "ccf", "n_snvs", "n_indels", "n_svs")]
-    final_pcawg11_output$final_clusters[,c("n_svs")] = colSums(sv_output[, grepl("cluster_", colnames(sv_output))], na.rm=T)
+    # if there are no SVs with probabilities anymore, then set the cluster sizes to NA
+    if (all(is.na(sv_output[, grepl("cluster_", colnames(sv_output))]))) {
+      final_pcawg11_output$final_clusters[,c("n_svs")] = NA
+    } else {
+      final_pcawg11_output$final_clusters[,c("n_svs")] = colSums(sv_output[, grepl("cluster_", colnames(sv_output))], na.rm=T)
+    }
     print("after updating SV clust sizes:")
     print(final_pcawg11_output$final_clusters[,c("cluster", "proportion", "ccf", "n_snvs", "n_indels", "n_svs")])
   }
