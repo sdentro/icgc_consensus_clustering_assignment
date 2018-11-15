@@ -183,18 +183,16 @@ get_clusters_entry = function(clusters, assignments_table, indel_assignments=NUL
   num_subclones = 0
   num_superclones = 0
   num_superclonal = 0
-  indel_clonal = 0
-  indel_subclonal = 0
-  indel_superclonal = 0
-  sv_clonal = 0
-  sv_subclonal = 0
-  sv_superclonal = 0
+  indel_clonal = ifelse(!is.null(indel_assignments), 0, NA)
+  indel_subclonal = ifelse(!is.null(indel_assignments), 0, NA)
+  indel_superclonal = ifelse(!is.null(indel_assignments), 0, NA)
+  sv_clonal = ifelse(!is.null(sv_assignments), 0, NA)
+  sv_subclonal = ifelse(!is.null(sv_assignments), 0, NA)
+  sv_superclonal = ifelse(!is.null(sv_assignments), 0, NA)
   cluster_locations = c()
   cluster_sizes = c()
-  print(clusters)
+  
   for (cluster in rev(kept_clusters)) {
-    print(paste0("considering cluster ", cluster))
-    # if (clusters[clusters$cluster==cluster,]$ccf > min_clonal_ccf) {
     # take the first cluster as the clone
     if (which(clusters$cluster==cluster)==1) {
       # Clonal
@@ -225,6 +223,7 @@ get_clusters_entry = function(clusters, assignments_table, indel_assignments=NUL
       cluster_sizes = c(cluster_sizes, temp_cluster_size)
     }
   }
+  
   return(list(clust_stats=data.frame(num_subclones=num_subclones, 
                                num_clonal=num_clonal, num_subclonal=num_subclonal, num_superclones=num_superclones, num_superclonal=num_superclonal, 
                                indel_clonal=indel_clonal, indel_subclonal=indel_subclonal, indel_superclonal=indel_superclonal, 
