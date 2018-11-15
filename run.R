@@ -427,6 +427,7 @@ if (!is.null(vcf_sv)) {
     if (all(all_probs[!is.na(all_probs) & all_probs < 0] > -2*.Machine$double.eps)) {
       print("Encountered negative probabilities due to rounding")
       all_probs[!is.na(all_probs) & all_probs < 0] = round(all_probs[!is.na(all_probs) & all_probs < 0])
+      assign_probs[,grepl("cluster_", colnames(assign_probs))] = all_probs
     } else {
       stop("Encountered major negative probabilities")
     }
@@ -499,22 +500,12 @@ subcl_struct = final_pcawg11_output$final_clusters[,c("cluster", "proportion", "
 colnames(subcl_struct)[2] = "fraction_total_cells"
 colnames(subcl_struct)[3] = "fraction_cancer_cells"
 
-if (F) {
-if (!is.null(vcf_sv)) {
-  # Bug in pipeline, fixed post-hoc
-  sv_output = data.frame(chromosome=final_pcawg11_output$sv_assignments_prob$chr,
-                         position=final_pcawg11_output$sv_assignments_prob$pos,
-                         mut_type=rep("SV", nrow(final_pcawg11_output$sv_assignments_prob)),
-                         final_pcawg11_output$sv_assignments_prob[, grepl("cluster", colnames(final_pcawg11_output$sv_assignments_prob)), drop=F],
-                         chromosome2=final_pcawg11_output$sv_assignments_prob$chr2,
-                         position2=final_pcawg11_output$sv_assignments_prob$pos2,
-                         svid=final_pcawg11_output$sv_assignments$id,
-                         stringsAsFactors=F)
-  assign_probs = do.call(rbind, list(snv_output, indel_output, sv_output))
-}
-}
-for (i in which(is.na(timing$timing))) {
-  assign_probs[i, grepl("cluster", colnames(assign_probs))] = NA
+# check assignment probabilities and timing are consistently available
+for (i in 1:nrow(all_probs)) {
+  # if any prob is NA, then all should be NA
+  if ((any(is.na(all_probs[i,])) & !all(is.na(all_probs[i,])))) { print(paste0("PROBS INCONSISTENT:", i)) }
+  # if the assignment prob is NA, then timing information should be NA aswel
+  if (all(is.na(all_probs[i,])) & !is.na(timing$timing[i])) { print(paste0("TIMING INCONSISTENT:", i)) }
 }
 
 write.table(subcl_struct, file=file.path(outdir, paste0(samplename, "_subclonal_structure.txt")), quote=F, row.names=F, sep="\t")
