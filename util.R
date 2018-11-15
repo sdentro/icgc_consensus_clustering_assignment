@@ -362,11 +362,8 @@ pcawg11_output = function(snv_mtimer, indel_mtimer, sv_mtimer, MCN, MCN_indel, M
     if (n_subclones==0) {
       r = t(t(sapply(MCN$D$pAllSubclones, function(x) 0)))
     } else if (n_subclones==1) {
-      #r = t(t(sapply(MCN$D$pAllSubclones, function(x) if(length(x)!=0) x else rep(NA, n_subclones))))
       r = matrix(unlist(sapply(MCN$D$pAllSubclones, function(x) if(length(x)!=0) x else rep(NA, n_subclones))))
     } else {
-      # r = t(sapply(MCN$D$pAllSubclones, function(x) if(length(x)!=0) x else rep(1, n_subclones)))
-      # r = matrix(unlist(sapply(MCN$D$pAllSubclones, function(x) if(length(x)!=0) x else rep(1, n_subclones))), ncol=n_subclones, byrow=T)
       r = matrix(unlist(lapply(MCN$D$pAllSubclones, function(x) if (is.null(x)) { rep(NA, n_subclones) } else { x })), ncol=n_subclones, byrow=T)
     }
     snv_assignments_prob = data.frame(chr=as.character(seqnames(vcf_snv)), 
@@ -551,7 +548,6 @@ prepare_svclone_output = function(svclone_file, vcf_template, genome, take_prefe
   for (i in 1:nrow(dat)) {
     # Preferred copy number
     if ((dat$preferred_side[i]==0 & take_preferred_breakpoint) | (dat$preferred_side[i]==1 & !take_preferred_breakpoint)) {
-      # sv_chrom_pos = rbind(sv_chrom_pos, data.frame(chrom=as.character(dat$chr1[i]), pos=dat$pos1[i]))
       
       copy_number = as.numeric(unlist(stringr::str_split(dat$gtype1[i], ","))[1:2])
       major_cn[i] = copy_number[1]
@@ -564,7 +560,6 @@ prepare_svclone_output = function(svclone_file, vcf_template, genome, take_prefe
       WTCount[i] = dat$adjusted_norm1[i]
       ids[i] = dat$original_ID[i]
     } else if ((dat$preferred_side[i]==1 & take_preferred_breakpoint) | (dat$preferred_side[i]==0 & !take_preferred_breakpoint)) {
-      # sv_chrom_pos = rbind(sv_chrom_pos, data.frame(chrom=as.character(dat$chr2[i]), pos=dat$pos2[i]))
       
       copy_number = as.numeric(unlist(stringr::str_split(dat$gtype2[i], ","))[1:2])
       major_cn[i] = copy_number[1]
@@ -629,23 +624,6 @@ remap_svs = function(consensus_vcf_file, svclone_file, sv_assignments, sv_assign
     all_sv_data_probs[,colnames(sv_assignments_prob)[i]] = NA
   }
   
-  # iterate over all svs and replace
-  #for (i in 1:nrow(sv_assignments)) {
-  #  if (any(sv_assignments$pos[i] == svmap$pos1)) {
-  #    hit = which(sv_assignments$pos[i] == svmap$pos1)
-  #  } else {
-  #    hit = which(sv_assignments$pos[i] == svmap$pos2)
-  #  }
-  #  
-  #  svid = unlist(strsplit(svmap$original_id[hit], "_", fixed=T))[1]
-  #  all_sv_data_row = which(grepl(svid, all_sv_data$id))
-  #  # now have mapped i onto all_sv_data_row, which contains both end points of the SV
-  #  # save the assignments into the all_data tables
-  #  
-  #  all_sv_data$cluster[all_sv_data_row] = as.character(sv_assignments$cluster[i])
-  #  all_sv_data_probs[all_sv_data_row, grepl("cluster", colnames(all_sv_data_probs))] = sv_assignments_prob[i, grepl("cluster", colnames(sv_assignments_prob))]
-  #  all_sv_timing$timing[all_sv_data_row] = as.character(sv_timing$timing[i])
-  #}
   for (i in 1:nrow(all_sv_data)) {
 
 	  if (grepl("_2", all_sv_data$id[i])) {
@@ -729,10 +707,6 @@ mergeClustersByMutreadDiff = function(clusters, purity, ploidy, vcf_snv, min_rea
   print(exp_reads)
   print(ccf_diff)
 
-
-
-
-
   if (any(ccf_diff < min_read_diff)) {
     
     #' Iteratively merge a pair of clusters untill no more pairs within distance can be found
@@ -773,7 +747,7 @@ mergeClustersByMutreadDiff = function(clusters, purity, ploidy, vcf_snv, min_rea
 
 
 write_output_summary_table = function(structure_df, outdir, samplename, project, purity) {
-  #' Determine which cluster is clonal
+  # Determine which cluster is clonal
   is_clonal = structure_df$fraction_cancer_cells > 0.9
   if (any(is_clonal)) {
     if (sum(is_clonal, na.rm=T) > 1) {
@@ -795,7 +769,7 @@ write_output_summary_table = function(structure_df, outdir, samplename, project,
   }
 
 
-  #' Write out the summary table entry
+  # Write out the summary table entry
   summary_table = data.frame(cancer_type=project,
                              samplename=samplename,
                              num_subclones=nrow(structure_df)-1,
@@ -862,7 +836,6 @@ estimate_cluster_size = function(cluster_locations, vcf, bb, purity, sex, is_wgd
   cluster_sizes = list()
   for (i in 1:n_muts) {
     res = getClustLL2(NA, mult[i], total_cn[i], alt_count[i], wt_count[i], clusters$location, purity)
-    # res = dtrbetabinom(dpin$mut.count[i],dpin$mut.count[i]+dpin$WT.count[i], ifelse(clusters$location==1, 1-.Machine$double.eps, clusters$location), rho=0, xmin=pmin(dpin$mut.count[i],0))# + .Machine$double.eps), ncol=length(whichStates)
     res = res-max(res)
     res = exp(res)
     res = res / sum(res)
