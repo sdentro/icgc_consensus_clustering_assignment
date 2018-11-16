@@ -1,55 +1,65 @@
 ########################################################################
 # Overloaded function from MutationTimeR
 ########################################################################
-loadBB <- function(file, round_subclones=F, remove_subclones=F) {
+#' This function is extended with being able to round or remove
+#' subclonal copy number calls. MutationTimeR will create
+#' additional subclonal states for subclonal copy number,
+#' which we did not want. This functionality is not required
+#' for the PCAWG dataset, as there is no suclonal copy number,
+#' but was needed for the simulations
+#' @param file A PCAWG-11 format segments file
+#' @param round_subclones Boolean whether to round of subclonal copy number
+#' @param remove_subclones Boolean whether to remove subclonal copy number
+#' @return A GRanges object with copy number data
+loadBB <- function(file, round_subclones = F, remove_subclones = F) {
   if (round_subclones & remove_subclones) {
     print("When supplying both rounding and removing to loadBB subclones are removed")
   }
-
-
-        tab <- read.table(file, header=TRUE, sep='\t')
-        r = GRanges(tab$chromosome, IRanges(tab$start, tab$end), strand="*", tab[-3:-1])
-
-        if (remove_subclones) {
-          o = findOverlaps(r, r)
-          c = countSubjectHits(o)
-          subclonal_segments = which(c > 1)
-          r = r[-subclonal_segments,]
-
-        } else if (round_subclones) {
-
-          # Check for the ccf column
-          if (!"ccf" %in% colnames(tab)) {
-            print("No CCF column in segments supplied, stopping")
-            q(save="no", status=1)
-          }
-
-          # Round subclonal copy number by taking the maximum CCF state
-          o = findOverlaps(r, r)
-          c = countSubjectHits(o)
-
-          merged_subclonal = data.frame()
-          if (any(c > 1)) {
-	    subclonal_segments = which(c > 1)[seq(1,length(which(c > 1)), 2)]
-            for (i in subclonal_segments) {
-              tab_curr = tab[subjectHits(o)[queryHits(o)==i],]
-              tab_select = tab_curr[which.max(tab_curr$ccf),]
-              tab_select$ccf = 1
-              merged_subclonal = rbind(merged_subclonal, tab_select)
-            }
-          }
-          subclonal_segments = subjectHits(o)[which(c > 1)]
-          tab_merged = rbind(tab[c==1,], merged_subclonal)
-          r = sort(GRanges(tab_merged$chromosome, IRanges(tab_merged$start, tab_merged$end), strand="*", tab_merged[-3:-1]))
-        }
-
-        if (length(r)==0) {
-          print("No copy number left after filtering, exit now")
-          q(save="no", status=0)
-        }
-
-
-        return(r)
+  tab <- read.table(file, header = TRUE, sep = '\t')
+  r = GRanges(tab$chromosome, IRanges(tab$start, tab$end), strand = "*", tab[-3:-1])
+  
+  if (remove_subclones) {
+    o = findOverlaps(r, r)
+    c = countSubjectHits(o)
+    subclonal_segments = which(c > 1)
+    r = r[-subclonal_segments, ]
+    
+  } else if (round_subclones) {
+    # Check for the ccf column
+    if (!"ccf" %in% colnames(tab)) {
+      print("No CCF column in segments supplied, stopping")
+      q(save = "no", status = 1)
+    }
+    
+    # Round subclonal copy number by taking the maximum CCF state
+    o = findOverlaps(r, r)
+    c = countSubjectHits(o)
+    
+    merged_subclonal = data.frame()
+    if (any(c > 1)) {
+      subclonal_segments = which(c > 1)[seq(1, length(which(c > 1)), 2)]
+      for (i in subclonal_segments) {
+        tab_curr = tab[subjectHits(o)[queryHits(o) == i], ]
+        tab_select = tab_curr[which.max(tab_curr$ccf), ]
+        tab_select$ccf = 1
+        merged_subclonal = rbind(merged_subclonal, tab_select)
+      }
+    }
+    subclonal_segments = subjectHits(o)[which(c > 1)]
+    tab_merged = rbind(tab[c == 1, ], merged_subclonal)
+    r = sort(GRanges(
+      tab_merged$chromosome,
+      IRanges(tab_merged$start, tab_merged$end),
+      strand = "*",
+      tab_merged[-3:-1]
+    ))
+  }
+  
+  if (length(r) == 0) {
+    print("No copy number left after filtering, exit now")
+    q(save = "no", status = 0)
+  }
+  return(r)
 }
 
 ########################################################################
@@ -240,8 +250,6 @@ get_clusters_entry = function(clusters, assignments_table, indel_assignments=NUL
     
     if (! cluster %in% superclones_to_merge) {
       cluster_locations = c(cluster_locations, clusters[clusters$cluster==cluster,]$ccf)
-      
-      # temp_cluster_size = assignments[cluster]
       temp_cluster_size = sum(snv_assignment_probs[,paste0("cluster_", cluster)], na.rm=T)
       cluster_sizes = c(cluster_sizes, temp_cluster_size)
     }
@@ -254,8 +262,6 @@ get_clusters_entry = function(clusters, assignments_table, indel_assignments=NUL
               clust_details=list(cluster_locations, cluster_sizes)))
 }
 
-
-FRAC_SNVS_CLUSTER = 0.01
 
 #' Creates a summary table entry
 #' 
@@ -282,7 +288,6 @@ get_summary_table_entry = function(samplename, cluster_info, snv_assignment_tabl
   sample_entry$sv_superclonal = 0
   sample_entry$cluster_locations = NA
   sample_entry$cluster_sizes = NA
-  # colnames(cluster_info) = c("cluster.no", "no.of.muts", "proportion", "location")
   
   # Get the values for various SNV cluster related columns
   res = get_clusters_entry(cluster_info, 
@@ -309,7 +314,7 @@ get_summary_table_entry = function(samplename, cluster_info, snv_assignment_tabl
 }
 
 ########################################################################
-# PCAWG11 Calibration format
+# Produce output in PCAWG11 Calibration format
 ########################################################################
 pcawg11_output = function(snv_mtimer, indel_mtimer, sv_mtimer, MCN, MCN_indel, MCN_sv, vcf_snv, vcf_indel, vcf_sv, MCN_sv_alt=NULL, vcf_sv_alt=NULL, sv_alt_mtimer=NULL) {
   # Cluster locations

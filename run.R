@@ -90,11 +90,7 @@ max_allowed_sv_prob_diff = 0.5 # if the pair of breakpoints that underpin a SV d
 
 vcf_template = file.path(libpath, "template_icgc_consensus.vcf")
 
-
-##UNCOMMENT for testing with old mtimer
 library(MutationTimeR)
-#source("~/repo/MutationTime.R/MutationTime.R")
-#source("~/repo/icgc_consensus_clustering_assignment//MutationTime.R")
 source(file.path(libpath, "util.R")) # this must occur after loading mtimer as it overloads the loadBB function
 library(ggplot2)
 library(gridExtra)
@@ -109,9 +105,7 @@ q = 0.05
 ########################################################################
 # Parse the input
 ########################################################################
-#UNCOMMENT for testing with old mtimer
 bb = loadBB(bb_file, round_subclones=round_subclonal_cna, remove_subclones=remove_subclones)
-#bb = loadBB(bb_file)
 clusters = read.table(clust_file, header=TRUE, sep="\t")
 
 if (!any(colnames(clusters)=="proportion")) {
@@ -176,9 +170,8 @@ if (max(clusters$cluster) > nrow(clusters)) {
 if (merge_clusters & nrow(clusters) > 1) { clusters = mergeClustersByMutreadDiff(clusters, purity, ploidy, vcf_snv, min_read_diff) }
 
 ########################################################################
-# Assignments
+# Assignments - MutationTimeR
 ########################################################################
-# Assign using Moritz' approach
 	MCN <- computeMutCn(vcf_snv, bb, clusters, purity, gender=sex, isWgd=is_wgd, rho=rho_snv, n.boot=0, xmin=xmin, deltaFreq=deltaFreq)
 
 	if (!is.null(vcf_indel)) {
@@ -219,7 +212,7 @@ if (!is.null(vcf_sv_alt)) {
 }
 
 ########################################################################
-# Create the assignment - binom probability
+# Assignments - binom probability (used as comparison for plotting)
 ########################################################################
 snv_binom = assign_binom_ll(MCN, clusters, purity)
 if (!is.null(vcf_indel)) {
@@ -233,12 +226,12 @@ if (!is.null(vcf_sv_alt)) {
 }
 
 ########################################################################
-# Obtain final PCAWG-11 output
+# Obtain final output
 ########################################################################
 final_pcawg11_output = pcawg11_output(snv_mtimer, indel_mtimer, sv_mtimer, MCN, MCN_indel, MCN_sv, vcf_snv, vcf_indel, vcf_sv, MCN_sv_alt, vcf_sv_alt, sv_alt_mtimer) #sv_vcf_file
 
 ########################################################################
-# Output to share with PCAWG
+# Format the output - including merging of SV breakpoint probs
 ########################################################################
 snv_timing = data.frame(chromosome=as.character(seqnames(vcf_snv)),
                         position=as.numeric(start(vcf_snv)),
@@ -260,33 +253,35 @@ snv_output = data.frame(chromosome=final_pcawg11_output$snv_assignments_prob$chr
                         position2=rep(NA, nrow(MCN$D)),
                         svid=rep(NA, nrow(MCN$D)),
                         stringsAsFactors=F)
-if (!is.null(vcf_indel)) {
-indel_timing = data.frame(chromosome=as.character(seqnames(vcf_indel)),
-                          position=as.numeric(start(vcf_indel)),
-                          mut_type=rep("indel", nrow(MCN_indel$D)),
-                          timing=MutationTimeR:::classifyMutations(MCN_indel$D),
-                          chromosome2=rep(NA, nrow(MCN_indel$D)),
-                          position2=rep(NA, nrow(MCN_indel$D)),
-                          svid=rep(NA, nrow(MCN_indel$D)),
-                          prob_clonal_early=MCN_indel$D$pGain,
-                          prob_clonal_late=MCN_indel$D$pSingle,
-                          prob_subclonal=MCN_indel$D$pSub,
-                          stringsAsFactors=F)
 
-indel_output = data.frame(chromosome=final_pcawg11_output$indel_assignments_prob$chr,
-                          position=final_pcawg11_output$indel_assignments_prob$pos,
-                          mut_type=rep("indel", nrow(MCN_indel$D)),
-                          final_pcawg11_output$indel_assignments_prob[, grepl("cluster", colnames(final_pcawg11_output$indel_assignments_prob)), drop=F],
-                          chromosome2=rep(NA, nrow(MCN_indel$D)),
-                          position2=rep(NA, nrow(MCN_indel$D)),
-                          svid=rep(NA, nrow(MCN_indel$D)),
-                          stringsAsFactors=F)
+if (!is.null(vcf_indel)) {
+  indel_timing = data.frame(chromosome=as.character(seqnames(vcf_indel)),
+                            position=as.numeric(start(vcf_indel)),
+                            mut_type=rep("indel", nrow(MCN_indel$D)),
+                            timing=MutationTimeR:::classifyMutations(MCN_indel$D),
+                            chromosome2=rep(NA, nrow(MCN_indel$D)),
+                            position2=rep(NA, nrow(MCN_indel$D)),
+                            svid=rep(NA, nrow(MCN_indel$D)),
+                            prob_clonal_early=MCN_indel$D$pGain,
+                            prob_clonal_late=MCN_indel$D$pSingle,
+                            prob_subclonal=MCN_indel$D$pSub,
+                            stringsAsFactors=F)
+  
+  indel_output = data.frame(chromosome=final_pcawg11_output$indel_assignments_prob$chr,
+                            position=final_pcawg11_output$indel_assignments_prob$pos,
+                            mut_type=rep("indel", nrow(MCN_indel$D)),
+                            final_pcawg11_output$indel_assignments_prob[, grepl("cluster", colnames(final_pcawg11_output$indel_assignments_prob)), drop=F],
+                            chromosome2=rep(NA, nrow(MCN_indel$D)),
+                            position2=rep(NA, nrow(MCN_indel$D)),
+                            svid=rep(NA, nrow(MCN_indel$D)),
+                            stringsAsFactors=F)
 } else {
   indel_timing = NULL
   indel_output = NULL
 }
 
 if (!is.null(vcf_sv)) {
+  # use one SV breakpoint for assignment
   sv_timing = data.frame(chromosome=as.character(seqnames(vcf_sv)),
                          position=start(vcf_sv),
                          mut_type=rep("SV", nrow(MCN_sv$D)),
@@ -322,12 +317,12 @@ if (!is.null(vcf_sv)) {
   }
 
   
-  sv_output = data.frame(chromosome=as.character(final_pcawg11_output$sv_assignments$chr), #info(vcf_sv)$chr1,
-                         position=final_pcawg11_output$sv_assignments$pos, #info(vcf_sv)$pos1,
+  sv_output = data.frame(chromosome=as.character(final_pcawg11_output$sv_assignments$chr),
+                         position=final_pcawg11_output$sv_assignments$pos,
                          mut_type=rep("SV", nrow(final_pcawg11_output$sv_assignments_prob)),
                          final_pcawg11_output$sv_assignments_prob[, grepl("cluster", colnames(final_pcawg11_output$sv_assignments_prob)), drop=F],
-                         chromosome2=final_pcawg11_output$sv_assignments$chr2, #info(vcf_sv)$chr2,
-                         position2=final_pcawg11_output$sv_assignments$pos2, #info(vcf_sv)$pos2,
+                         chromosome2=final_pcawg11_output$sv_assignments$chr2,
+                         position2=final_pcawg11_output$sv_assignments$pos2,
                          svid=final_pcawg11_output$sv_assignments$id,
                          stringsAsFactors=F)
   
@@ -358,8 +353,6 @@ if (!is.null(vcf_sv)) {
     }
     
     # re-establish SV cluster sizes
-    print("before updating SV clust sizes:")
-    print(final_pcawg11_output$final_clusters[,c("cluster", "proportion", "ccf", "n_snvs", "n_indels", "n_svs")])
     final_pcawg11_output$final_clusters[,c("cluster", "proportion", "ccf", "n_snvs", "n_indels", "n_svs")]
     # if there are no SVs with probabilities anymore, then set the cluster sizes to NA
     if (all(is.na(sv_output[, grepl("cluster_", colnames(sv_output))]))) {
@@ -367,45 +360,7 @@ if (!is.null(vcf_sv)) {
     } else {
       final_pcawg11_output$final_clusters[,c("n_svs")] = colSums(sv_output[, grepl("cluster_", colnames(sv_output))], na.rm=T)
     }
-    print("after updating SV clust sizes:")
-    print(final_pcawg11_output$final_clusters[,c("cluster", "proportion", "ccf", "n_snvs", "n_indels", "n_svs")])
   }
-  
-  # code for tracking performance of SV assignments
-  # # recalculate the cluster sizes for SVs - without the masked svs
-  # final_pcawg11_output$final_clusters$n_svs = colSums(sv_output[, grepl("cluster_", colnames(sv_output))], na.rm=T) / 2
-  # after = colSums(sv_output[, grepl("cluster_", colnames(sv_output))], na.rm=T) / 2
-  # compare = as.data.frame(rbind(unlist(before), unlist(after)))
-  # compare$samplename = samplename
-  # compare$type = c("before", "after")
-  # write.table(compare, file=file.path("output", paste0(samplename, "_sv_clustsizeassignments.txt")), quote=F, sep="\t", row.names=F)
-  # 
-  # # compare the cluster size estimates - samples where there is a big discrepancy, we cannot really know
-  # max_allowed_size_diff = 0.5
-  # # remove masked ?
-  # svids = unlist(lapply(info(vcf_sv)$id, function(x) unlist(strsplit(x, "_"))[1]))
-  # vcf_sv_nomask = vcf_sv[!unlist(lapply(svids, function(x) x %in% masked)),]
-  # temp_bb = copynumber_at_sv_locations(bb, vcf_sv_nomask)
-  # sizes_bp_a = estimate_cluster_size(clusters$ccf, vcf_sv_nomask, temp_bb, purity, sex, is_wgd, rho_sv, xmin, deltaFreq)
-  # vcf_sv_nomask = vcf_sv_alt[!unlist(lapply(svids, function(x) x %in% masked)),]
-  # temp_bb = copynumber_at_sv_locations(bb, vcf_sv_nomask)
-  # sizes_bp_b = estimate_cluster_size(clusters$ccf, vcf_sv_nomask, temp_bb, purity, sex, is_wgd, rho_sv, xmin, deltaFreq)
-  # 
-  # sizes_bp_a = sizes_bp_a / sum(sizes_bp_a)
-  # sizes_bp_b = sizes_bp_b / sum(sizes_bp_b)
-  # size_diff = mean(abs(sizes_bp_a-sizes_bp_b))
-  # # if (size_diff > max_allowed_size_diff) {
-  # #   sv_output[, grepl("cluster_", colnames(sv_output))] = NA
-  # # }
-  # summary = as.data.frame(matrix(NA, ncol=length(sizes_bp_a)+1, nrow=2))
-  # summary[,1] = samplename
-  # summary[1,2:ncol(summary)] = sizes_bp_a
-  # summary[2,2:ncol(summary)] = sizes_bp_b
-  # colnames(summary) = c("samplename", colnames(sv_output)[grepl("cluster_", colnames(sv_output))])
-  # summary$type = c("bp_a", "bp_b")
-  # summary$mean_diff = size_diff
-  # summary$clonal_diff = abs(sizes_bp_a[1]-sizes_bp_b[1])
-  # write.table(summary, file=file.path("output", paste0(samplename, "_sv_clustsizeestimate.txt")), quote=F, sep="\t", row.names=F)
 
   timing = do.call(rbind, list(snv_timing, indel_timing, sv_timing))
   assign_probs = do.call(rbind, list(snv_output, indel_output, sv_output))
@@ -436,7 +391,7 @@ if (any(assign_probs[,grepl("cluster_", colnames(assign_probs))] < 0, na.rm=T)) 
 # Summary table entry
 ########################################################################
 
-# summarise tail probabilities for the beta-binomials fit to easch mutation type
+# summarise tail probabilities for the beta-binomials fit to each mutation type
 qq_snv <- mean(MCN$D$pMutCNTail < q/2 | MCN$D$pMutCNTail > 1-q/2, na.rm=T)
 if (!is.null(vcf_indel)) {
   qq_indel <- mean(MCN_indel$D$pMutCNTail < q/2 | MCN_indel$D$pMutCNTail > 1-q/2, na.rm=T)
@@ -486,7 +441,7 @@ sample_entry = data.frame(sample_entry, posthoc_stats, stringsAsFactors=F)
 write.table(sample_entry, file.path(outdir, paste0(samplename, "_summary_table_entry.txt")), row.names=F, sep="\t", quote=F)
 
 ########################################################################
-# produce pcawg wide output
+# produce pcawg wide output files
 ########################################################################
 subcl_struct = final_pcawg11_output$final_clusters[,c("cluster", "proportion", "ccf", "n_snvs", "n_indels", "n_svs")]
 colnames(subcl_struct)[2] = "fraction_total_cells"
