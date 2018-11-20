@@ -99,4 +99,3 @@ The text files contain the following data:
 | prob_clonal_early | Probability of mutation being clonal and early |
 | prob_clonal_late | Probability of mutation being clonal and late |
 | prob_subclonal | Probability of mutation being subclonal |
->>>>>>> 56f29f01cd565996d8d167625c6ea19fbfb0e4d8
