@@ -293,6 +293,9 @@ if (!is.null(vcf_sv)) {
                          prob_clonal_late=MCN_sv$D$pSingle,
                          prob_subclonal=MCN_sv$D$pSub,
                          stringsAsFactors=F)
+  # reset probabilities if one cannot distinguish between clonal early and late
+  sv_timing$prob_clonal_early[as.character(sv_timing$timing)=="clonal [NA]"] = NA
+  sv_timing$prob_clonal_late[as.character(sv_timing$timing)=="clonal [NA]"] = NA
 
   if (!is.null(vcf_sv_alt)) {
     # here we use the other SV breakpoint for a separate assignment
@@ -307,6 +310,9 @@ if (!is.null(vcf_sv)) {
                            prob_clonal_late=MCN_sv_alt$D$pSingle,
                            prob_subclonal=MCN_sv_alt$D$pSub,
                            stringsAsFactors=F)
+    # reset probabilities if one cannot distinguish between clonal early and late
+    sv_alt_timing$prob_clonal_early[as.character(sv_alt_timing$timing)=="clonal [NA]"] = NA
+    sv_alt_timing$prob_clonal_late[as.character(sv_alt_timing$timing)=="clonal [NA]"] = NA
     sv_timing = rbind(sv_timing, sv_alt_timing)
   } else {
     # Remap SVs into their correct position
@@ -342,13 +348,29 @@ if (!is.null(vcf_sv)) {
         sv_output[grepl(svid, sv_output$svid), grepl("cluster_", colnames(sv_output))] = NA
         masked = c(masked, svid)
       } else {
-        # if there is a good concordance, combine the two separate estimates into one
+        # Assignment probabilities - if there is a good concordance, combine the two separate estimates into one
         probs_combined = sapply(1:length(probs_bp_a), function(i) mean(c(as.numeric(probs_bp_a[i]), as.numeric(probs_bp_b[i])), na.rm=T))
         if (sum(probs_combined) >= (1+.Machine$double.eps)) {
           print(paste0(svid, " probs not equal 1, diff is ", 1-sum(probs_combined)))
         }
         sv_output[sv_output$svid==paste0(svid, "_1"), grepl("cluster_", colnames(sv_output))] = probs_combined
         sv_output[sv_output$svid==paste0(svid, "_2"), grepl("cluster_", colnames(sv_output))] = probs_combined
+        
+        # Synchronise the timing information - probabilities first
+        timing_a = sv_timing[sv_timing$svid==paste0(svid, "_1"), grepl("prob_", colnames(sv_timing))]
+        timing_b = sv_timing[sv_timing$svid==paste0(svid, "_2"), grepl("prob_", colnames(sv_timing))]
+        timing_combined = sapply(1:length(timing_a), function(i) mean(c(as.numeric(timing_a[i]), as.numeric(timing_b[i])), na.rm=T))
+        timing_combined[!is.finite(timing_combined)] = NA
+        sv_timing[sv_timing$svid==paste0(svid, "_1"), grepl("prob_", colnames(sv_timing))] = timing_combined
+        sv_timing[sv_timing$svid==paste0(svid, "_2"), grepl("prob_", colnames(sv_timing))] = timing_combined
+        
+        # If the original classification did not agree, here we set the timing verdict to NA
+        # this is because timing also depends on the copy number, which remains unchanged
+        # it is therefore not possible to get a joint timing estimate that describes both breakpoints
+        if (!is.na(sv_timing[sv_timing$svid==paste0(svid, "_1"), "timing"]) & sv_timing[sv_timing$svid==paste0(svid, "_1"), "timing"] != sv_timing[sv_timing$svid==paste0(svid, "_2"), "timing"]) {
+          sv_timing[sv_timing$svid==paste0(svid, "_1"), "timing"] = NA
+          sv_timing[sv_timing$svid==paste0(svid, "_2"), "timing"] = NA
+        }
       }
     }
     
@@ -371,6 +393,13 @@ if (!is.null(vcf_sv)) {
   assign_probs = rbind(snv_output, indel_output)
 }
 
+# set timing probs to NA for clonal mutations that could not be classified as early or late
+# if this isn't done then prob_clonal_late is set to 1-prob_subclonal, which would be misleading
+timing[!is.na(as.character(timing$timing)) & as.character(timing$timing)=="clonal [NA]", c("prob_clonal_early", "prob_clonal_late")] = NA
+
+########################################################################
+# Checking
+########################################################################
 # check for negative probabilities
 # These can occur naturally due to rounding errors. here we check whether they exist
 # if a probability is within twice the machine precision we round it of
@@ -386,6 +415,23 @@ if (any(assign_probs[,grepl("cluster_", colnames(assign_probs))] < 0, na.rm=T)) 
     stop("Encountered major negative probabilities")
   }
 }
+
+all_timing_probs = timing[,grepl("prob_", colnames(timing)), drop=F]
+if (any(all_timing_probs < 0, na.rm=T)) {
+  if (all(all_timing_probs[!is.na(all_timing_probs) & all_timing_probs < 0] > -2*.Machine$double.eps)) {
+    print("Encountered negative timing probabilities due to rounding")
+    all_timing_probs[!is.na(all_timing_probs) & all_timing_probs < 0] = round(all_timing_probs[!is.na(all_timing_probs) & all_timing_probs < 0])
+    timing[,grepl("cluster_", colnames(timing))] = all_timing_probs
+  } else {
+    stop("Encountered major negative timing probabilities")
+  }
+}
+
+# check that all mutations have been accounted for
+if (length(vcf_snv) != sum(assign_probs$mut_type=="SNV")) { print("Did not assign all SNVs") }
+if (length(vcf_indel) != sum(assign_probs$mut_type=="indel")) { print("Did not assign all indels") }
+if ((2*length(vcf_sv)) != sum(assign_probs$mut_type=="SV")) { print("Did not assign all SVs") }
+
 
 ########################################################################
 # Summary table entry
