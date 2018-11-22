@@ -52,7 +52,7 @@ for (infile in list.files(indir, pattern="_assignment.RData", full.names=T)) {
   
   output_snv = get_ccf(vcf_snv, MCN$D, purity)
   output_snv$type = "SNV"
-  if (nrow(MCN_indel$D) > 0) {
+  if (!is.null(vcf_indel) && nrow(MCN_indel$D) > 0) {
     output_indel = get_ccf(vcf_indel, MCN_indel$D, purity)
     output_indel$type = "indel"
   } else {
