@@ -27,10 +27,14 @@ get_ccf = function(vcf, mt_output, purity) {
   output = data.frame(chromosome=as.character(seqnames(vcf)), position=as.numeric(start(vcf)), type=rep(NA, num_muts), 
                       ccf=rep(NA, num_muts), major_cn=mt_output$MajCN, minor_cn=mt_output$MinCN, mcn=rep(NA, num_muts), mult=mt_output$MutCN,
                       chromosome2=rep(NA, num_muts), position2=rep(NA, num_muts))  
-  output$mcn = mutationBurdenToMutationCopyNumber(burden=mt_output$altCount / (mt_output$altCount + mt_output$wtCount), 
-                                                  cellularity=purity, 
-                                                  normalCopyNumber=rep(2, num_muts), 
-                                                  totalCopyNumber=output$major_cn + output$minor_cn)
+  if ("altCount" %in% colnames(mt_output)) {
+    output$mcn = mutationBurdenToMutationCopyNumber(burden=mt_output$altCount / (mt_output$altCount + mt_output$wtCount), 
+                                                    cellularity=purity, 
+                                                    normalCopyNumber=rep(2, num_muts), 
+                                                    totalCopyNumber=output$major_cn + output$minor_cn)
+  } else {
+    output$mcn = NA
+  }
   output$ccf = output$mcn / output$mult
   return(output)
 }
