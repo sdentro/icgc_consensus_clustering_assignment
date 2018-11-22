@@ -5,7 +5,7 @@
 library(optparse)
 option_list = list(
   make_option(c("-l", "--libpath"), type="character", default=NULL, help="Path to pipeline installation directory", metavar="character"),
-  make_option(c("-i", "--input"), type="character", default=NULL, help="assignments.RData output file from the main pipeline", metavar="character"),
+  make_option(c("-i", "--input"), type="character", default=NULL, help="Directory where input (the output of the main pipeline) is stored", metavar="character"),
   make_option(c("-o", "--outputdir"), type="character", default=NULL, help="Directory where output will be written", metavar="character")
 )
 
@@ -13,18 +13,11 @@ opt_parser = OptionParser(option_list=option_list)
 opt = parse_args(opt_parser)
 
 libpath = opt$libpath
-infile = opt$i
-outdir = opt$outputdir
+indir = opt$input
+outputdir = opt$outputdir
 
-# PIPELINE_INSTALL_PATH = "~/repo/moritz_mut_assignment/"
-
-# source(file.path(PIPELINE_INSTALL_PATH, "MutationTime.R"))
 library(MutationTimeR)
 source(file.path(libpath, "util.R"))
-
-# produce the final output
-# indir = "output_wm"
-# outdir = "final_output"
 
 ########################################################################
 # Functions
@@ -45,7 +38,7 @@ get_ccf = function(vcf, mt_output, purity) {
 ########################################################################
 # Create the output
 ########################################################################
-# for (infile in list.files(indir, pattern="_assignment.RData", full.names=T)) {
+for (infile in list.files(indir, pattern="_assignment.RData", full.names=T)) {
   load(infile)
   if (file.exists(file.path(outdir, paste0(samplename, "_mutation_ccf.txt")))) { next }
   print(samplename)
@@ -68,5 +61,5 @@ get_ccf = function(vcf, mt_output, purity) {
   }
   
   output = rbind(output_snv, output_indel, output_sv)
-  write.table(output, file=file.path(outdir, paste0(samplename, "_mutation_ccf.txt")), row.names=F, sep="\t", quote=F)
-# }
+  write.table(output, file=file.path(outputdir, paste0(samplename, "_mutation_ccf.txt")), row.names=F, sep="\t", quote=F)
+}
