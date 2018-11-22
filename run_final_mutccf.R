@@ -5,7 +5,7 @@
 library(optparse)
 option_list = list(
   make_option(c("-l", "--libpath"), type="character", default=NULL, help="Path to pipeline installation directory", metavar="character"),
-  make_option(c("-i"), type="character", default=NULL, help="assignments.RData output file from the main pipeline", metavar="character"),
+  make_option(c("-i", "--input"), type="character", default=NULL, help="assignments.RData output file from the main pipeline", metavar="character"),
   make_option(c("-o", "--outputdir"), type="character", default=NULL, help="Directory where output will be written", metavar="character")
 )
 
