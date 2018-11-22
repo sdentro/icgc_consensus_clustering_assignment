@@ -46,6 +46,15 @@ R --no-save --no-restore --vanilla -f run.R --args \
 --iswgd [provide this option when the sample has undergone a whole genome doubling]
 ```
 
+When the pipeline has completed it is possible to generate raw cancer cell fraction estimates for each mutation by running the following command
+
+```
+R --no-save --no-restore --vanilla -f run.R --args \
+-l [path to where the repository is downloaded] \
+-i [assignment pipeline output directory] \
+-o [ccf output directory]
+```
+
 ## Produced output
 
 This script runs the pipeline and produces the following output files
