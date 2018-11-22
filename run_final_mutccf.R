@@ -43,6 +43,9 @@ get_ccf = function(vcf, mt_output, purity) {
 # Create the output
 ########################################################################
 for (infile in list.files(indir, pattern="_assignment.RData", full.names=T)) {
+  # clear anything from previous sample
+  try(rm(MCN_indel, MCN, MCN_sv, MCN_sv_alt, vcf_snv, vcf_indel, vcf_sv, vcf_sv_alt), silent=T)
+  
   load(infile)
   if (file.exists(file.path(outdir, paste0(samplename, "_mutation_ccf.txt")))) { next }
   print(samplename)
