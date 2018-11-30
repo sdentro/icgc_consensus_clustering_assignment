@@ -55,6 +55,15 @@ R --no-save --no-restore --vanilla -f run.R --args \
 -o [ccf output directory]
 ```
 
+And one can obtain probabilities of mutations being gained by running the following command
+
+```
+R --no-save --no-restore --vanilla -f run_prob_gained.R --args \
+-l [path to where the repository is downloaded] \
+-i [assignment pipeline output directory] \
+-o [ccf output directory]
+```
+
 ## Produced output
 
 This script runs the pipeline and produces the following output files
