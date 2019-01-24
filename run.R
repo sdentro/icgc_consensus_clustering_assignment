@@ -143,8 +143,8 @@ if (is.null(svclone_file) | is.null(svclone_file)) {
   vcf_sv = NULL
   vcf_sv_alt = NULL
 } else {
-  vcf_sv = prepare_svclone_output(svclone_file, vcf_template, genome="GRCh37")
-  vcf_sv_alt = prepare_svclone_output(svclone_file, vcf_template, genome="GRCh37", take_preferred_breakpoint=F)
+  vcf_sv = prepare_svclone_output(svclone_file, vcf_template, genome="GRCh37", sv_vcf_file=sv_vcf_file)
+  vcf_sv_alt = prepare_svclone_output(svclone_file, vcf_template, genome="GRCh37", sv_vcf_file=sv_vcf_file, take_preferred_breakpoint=F)
   if (nrow(vcf_sv)==0) {
 	  vcf_sv = NULL
 	  vcf_sv_alt = NULL
@@ -432,6 +432,19 @@ if (length(vcf_snv) != sum(assign_probs$mut_type=="SNV")) { print("Did not assig
 if (length(vcf_indel) != sum(assign_probs$mut_type=="indel")) { print("Did not assign all indels") }
 if ((2*length(vcf_sv)) != sum(assign_probs$mut_type=="SV")) { print("Did not assign all SVs") }
 
+assign_chrpos = paste(assign_probs$chromosome, "_", assign_probs$position, sep="")
+timing_chrpos = paste(timing$chromosome, "_", timing$position, sep="")
+
+orig_vcf_sv = readVcf(sv_vcf_file, "hg19")
+orig_chrpos = paste(as.character(seqnames(orig_vcf_sv)), "_", start(orig_vcf_sv), sep="")
+if (any(assign_chrpos!=orig_chrpos) | any(timing_chrpos!=orig_chrpos)) { 
+  print("SV position discrepancy detected") 
+  
+  print(which(!assign_chrpos==orig_chrpos))
+  print(which(!timing_chrpos==orig_chrpos))
+  
+  
+}
 
 ########################################################################
 # Summary table entry

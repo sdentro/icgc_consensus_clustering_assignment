@@ -546,6 +546,35 @@ parse_sv_data = function(cn_assignment_file, vafs_file) {
   return(as.data.frame(do.call(rbind, res)))
 }
 
+
+#' Function to establish IDs of SVs which have had their chr/pos swapped due to sorting done by SVclone
+get_swapped_pairs = function(sv_vcf_file, genome) {
+  # establish an order for chromosomes - this is later used to determine whether breakpoints of an SV have been swapped
+  chrom_names = gtools::mixedsort(unique(as.character(seqnames(temp))))
+  chrom_index = gtools::mixedorder(chrom_names)
+  names(chrom_index) = chrom_names
+  
+  vcf = readVcf(sv_vcf_file, genome)
+  
+  raw_chr_pos = data.frame()
+  for (i in 1:nrow(vcf)) {
+    sv_id = rownames(info(vcf))[i]
+    mate_id = info(vcf)$MATEID[i]
+    # check if this is the first time this SV is mentioned - used later for filtering
+    is_first_mention = !any(grepl(unlist(strsplit(sv_id, "_"))[1], raw_chr_pos$sv_id))
+    raw_chr_pos = rbind(raw_chr_pos, data.frame(chr1=as.character(seqnames(vcf))[i], pos1=start(vcf)[i],
+                                                chr2=as.character(seqnames(vcf))[rownames(info(vcf))==mate_id], pos2=start(vcf)[rownames(info(vcf))==mate_id],
+                                                sv_id=sv_id, mate_id=mate_id, is_first_mention=is_first_mention, stringsAsFactors=F))
+  }
+  # swapping occurs when the _first mentioned_ breakpoints chromosome is lower than the _second mentioned_
+  raw_chr_pos_first = raw_chr_pos[raw_chr_pos$is_first_mention,]
+  
+  is_swapped = raw_chr_pos_first$sv_id[chrom_index[raw_chr_pos_first$chr1] > chrom_index[raw_chr_pos_first$chr2]]
+  is_swapped = unlist(lapply(is_swapped, function(x) unlist(strsplit(x, "_"))[1]))
+  
+  return(is_swapped)
+}
+
 #' Transform the SVclone raw data into a vcf object
 #' 
 #' @param svclone_file SVclone vaf file with copy number mapping
@@ -559,7 +588,7 @@ parse_sv_data = function(cn_assignment_file, vafs_file) {
 #' adjusted support and depth. For convenience the original chr1/pos1 and chr2/pos2
 #' columns are also provided.
 #' @author sd11
-prepare_svclone_output = function(svclone_file, vcf_template, genome, take_preferred_breakpoint=T) {
+prepare_svclone_output = function(svclone_file, vcf_template, genome, sv_vcf_file, take_preferred_breakpoint=T) {
   dat = read.table(svclone_file, header=T, stringsAsFactors=F, sep="\t")
   
   mutCount = dat$adjusted_support
@@ -607,6 +636,15 @@ prepare_svclone_output = function(svclone_file, vcf_template, genome, take_prefe
   d = data.frame(chromosome=sv_chrom_pos$chrom, position=sv_chrom_pos$pos, stringsAsFactors=F)
   d.gr = makeGRangesFromDataFrame(d, start.field="position", end.field="position")
   d.info = DataFrame(t_alt_count=mutCount, t_ref_count=WTCount, chr1=dat$chr1, pos1=dat$original_pos1, chr2=dat$chr2, pos2=dat$original_pos2, id=ids, major_cn=major_cn, minor_cn=minor_cn, original_pos=original_pos)
+  
+  # SVclone does sorting and swaps chr1/pos1 with chr2/pos2 when chr2 < chr1. To get the original ordering back we need to switch here
+  is_swapped = get_swapped_pairs(sv_vcf_file, genome)
+  
+  for (i in 1:length(is_swapped)) {
+    entry = d.info[grepl(is_swapped[i], d.info$id),]
+    d.info[grepl(is_swapped[i], d.info$id), c("chr1", "pos1", "chr2", "pos2")] = entry[,c("chr2", "pos1", "chr1", "pos2")]
+  }
+  
   d.v = VCF(rowRanges=d.gr, exptData=metadata(v), geno=geno(v), fixed=rep(fixed(v)[1,], nrow(d)), colData=colData(v), info=d.info)
   return(d.v)
 }
