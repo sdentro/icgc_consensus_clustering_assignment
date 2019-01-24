@@ -549,12 +549,12 @@ parse_sv_data = function(cn_assignment_file, vafs_file) {
 
 #' Function to establish IDs of SVs which have had their chr/pos swapped due to sorting done by SVclone
 get_swapped_pairs = function(sv_vcf_file, genome) {
+  vcf = readVcf(sv_vcf_file, genome)
+  
   # establish an order for chromosomes - this is later used to determine whether breakpoints of an SV have been swapped
-  chrom_names = gtools::mixedsort(unique(as.character(seqnames(temp))))
+  chrom_names = gtools::mixedsort(unique(as.character(seqnames(vcf))))
   chrom_index = gtools::mixedorder(chrom_names)
   names(chrom_index) = chrom_names
-  
-  vcf = readVcf(sv_vcf_file, genome)
   
   raw_chr_pos = data.frame()
   for (i in 1:nrow(vcf)) {
