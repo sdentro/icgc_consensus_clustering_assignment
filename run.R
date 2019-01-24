@@ -332,6 +332,9 @@ if (!is.null(vcf_sv)) {
                          svid=final_pcawg11_output$sv_assignments$id,
                          stringsAsFactors=F)
   
+  # synchronise chr/pos for SVs in both data frames
+  sv_timing[,c("chromosome", "position", "chromosome2", "position2")] = sv_output[,c("chromosome", "position", "chromosome2", "position2")]
+  
   # If the sample is not clonal, then we look to merge the SV breakpoint assignment probabilities (i.e. each SV up until now
   # has two probabilities, one for each breakpoint, here they are merged into one)
   if (nrow(final_pcawg11_output$final_clusters) > 1) {
