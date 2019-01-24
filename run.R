@@ -349,6 +349,8 @@ if (!is.null(vcf_sv)) {
       if (prob_diff > max_allowed_sv_prob_diff | is.na(prob_diff)) {
         # mask probabilities of breakpoint pairs that differ by more than the established threshold
         sv_output[grepl(svid, sv_output$svid), grepl("cluster_", colnames(sv_output))] = NA
+        sv_timing[grepl(svid, sv_output$svid), grepl("prob_", colnames(sv_timing))] = NA
+        sv_timing$timing[grepl(svid, sv_output$svid)] = NA
         masked = c(masked, svid)
       } else {
         # Assignment probabilities - if there is a good concordance, combine the two separate estimates into one
@@ -440,7 +442,7 @@ timing_chrpos = paste(timing$chromosome, "_", timing$position, sep="")
 
 orig_vcf_sv = readVcf(sv_vcf_file, "hg19")
 orig_chrpos = paste(as.character(seqnames(orig_vcf_sv)), "_", start(orig_vcf_sv), sep="")
-if (any(assign_chrpos[assign&mut_type=="SV"]!=orig_chrpos) | any(timing_chrpos[timing&mut_type=="SV"]!=orig_chrpos)) { 
+if (length(intersect(assign_chrpos[assign_probs$mut_type=="SV"], orig_chrpos))!=(2*length(vcf_sv)) | length(intersect(timing_chrpos[timing$mut_type=="SV"], orig_chrpos))!=(2*length(vcf_sv))) { 
   print("SV position discrepancy detected") 
   
   print(which(!assign_chrpos==orig_chrpos))
