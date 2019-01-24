@@ -440,7 +440,7 @@ timing_chrpos = paste(timing$chromosome, "_", timing$position, sep="")
 
 orig_vcf_sv = readVcf(sv_vcf_file, "hg19")
 orig_chrpos = paste(as.character(seqnames(orig_vcf_sv)), "_", start(orig_vcf_sv), sep="")
-if (any(assign_chrpos!=orig_chrpos) | any(timing_chrpos!=orig_chrpos)) { 
+if (any(assign_chrpos[assign&mut_type=="SV"]!=orig_chrpos) | any(timing_chrpos[timing&mut_type=="SV"]!=orig_chrpos)) { 
   print("SV position discrepancy detected") 
   
   print(which(!assign_chrpos==orig_chrpos))
