@@ -388,6 +388,10 @@ if (!is.null(vcf_sv)) {
       final_pcawg11_output$final_clusters[,c("n_svs")] = colSums(sv_output[, grepl("cluster_", colnames(sv_output))], na.rm=T)
     }
   }
+  
+  # add missing SV ids that did not make it into the SVclone output
+  sv_timing = add_missing_entries(sv_vcf_file, "GRCh37", sv_timing)
+  sv_output = add_missing_entries(sv_vcf_file, "GRCh37", sv_output)
 
   timing = do.call(rbind, list(snv_timing, indel_timing, sv_timing))
   assign_probs = do.call(rbind, list(snv_output, indel_output, sv_output))
@@ -440,9 +444,10 @@ if ((2*length(vcf_sv)) != sum(assign_probs$mut_type=="SV")) { print("Did not ass
 assign_chrpos = paste(assign_probs$chromosome, "_", assign_probs$position, sep="")
 timing_chrpos = paste(timing$chromosome, "_", timing$position, sep="")
 
-orig_vcf_sv = readVcf(sv_vcf_file, "hg19")
+orig_vcf_sv = readVcf(sv_vcf_file, "GRCh37")
 orig_chrpos = paste(as.character(seqnames(orig_vcf_sv)), "_", start(orig_vcf_sv), sep="")
-if (length(intersect(assign_chrpos[assign_probs$mut_type=="SV"], orig_chrpos))!=(2*length(vcf_sv)) | length(intersect(timing_chrpos[timing$mut_type=="SV"], orig_chrpos))!=(2*length(vcf_sv))) { 
+# if (length(intersect(assign_chrpos[assign_probs$mut_type=="SV"], orig_chrpos))!=(2*length(vcf_sv)) | length(intersect(timing_chrpos[timing$mut_type=="SV"], orig_chrpos))!=(2*length(vcf_sv))) { 
+if (any(assign_chrpos[assign_probs$mut_type=="SV"]!=orig_chrpos) | any(timing_chrpos[timing$mut_type=="SV"]!=orig_chrpos)) { 
   print("SV position discrepancy detected") 
   
   print(which(!assign_chrpos==orig_chrpos))

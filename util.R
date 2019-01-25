@@ -575,11 +575,61 @@ get_swapped_pairs = function(sv_vcf_file, genome) {
   return(is_swapped)
 }
 
+#' Function that returns missing SV breakpoints from the SVclone data
+get_missing_entries = function(sv_vcf_file, genome, df) {
+  svclone = read.table(svclone_file, header=T, stringsAsFactors=F, sep="\t")
+  vcf = readVcf(sv_vcf_file, genome)
+  
+  all_svids = rownames(info(vcf))
+  return(setdiff(all_svids, df$svid))
+}
+
+#' Adds SVs that were not in the SVclone output to the specified df
+add_missing_entries = function(sv_vcf_file, genome, df) {
+  missing_ids = get_missing_entries(sv_vcf_file, genome, df)
+  vcf = readVcf(sv_vcf_file, genome)
+  ids_order = rownames(info(vcf))
+  index_missing_ids = which(ids_order %in% missing_ids)
+  
+  if (nrow(df)==0 & length(vcf)==0) {
+    # no SVs, nothing to be done
+    return(df)
+  } else if (nrow(df)==0 & length(vcf) > 0) {
+    # catch case where there would be no dummy to select
+    stop("No template SV entry, but attempting to insert missing SVs")
+  }
+  
+  # select a template and reset columns depending on df supplied
+  dummy_entry = df[1,,drop=F]
+  if ("prob_" %in% colnames(dummy_entry)) {
+    dummy_entry[,grepl("prob_", colnames(dummy_entry))] = NA
+    dummy_entry[,"timing"] = NA
+  } else if ("cluster_" %in% colnames(dummy_entry)) {
+    dummy_entry[,grepl("cluster_", colnames(dummy_entry))] = NA
+  } else {
+    stop("Unexpected data.frame format when inserting missing SVs")
+  }
+  
+  # for every missing SV, fill in details in the template and add it to df
+  for (i in sort(index_missing_ids)) {
+    mate_id = info(vcf)$MATEID[i]
+    dummy_entry$svid = ids_order[i]
+    dummy_entry[, c("chromosome", "position")] = c(as.character(seqnames(vcf)[i]), start(vcf)[i])
+    dummy_entry[, c("chromosome2", "position2")] = c(as.character(seqnames(vcf)[which(ids_order==mate_id)]), start(vcf)[ids_order==mate_id])
+    df = rbind(df, dummy_entry)
+  }
+  # sort df in same order as the sv vcf file
+  df = df[match(ids_order, df$svid),]
+  return(df)
+}
+
+
 #' Transform the SVclone raw data into a vcf object
 #' 
 #' @param svclone_file SVclone vaf file with copy number mapping
 #' @param vcf_template Path to a vcf template file
 #' @param genome The reference genome to pass to readVcf
+#' @param sv_vcf_file VCF file with SV data that was used as input to SVclone
 #' @param take_preferred_breakpoint Supply TRUE when to use the preferred breakpoint, set to FALSE when the not preferred breakpoint is to be used (Default: TRUE)
 #' 
 #' @return A basic vcf file with chromosome/position according to the SVclone
@@ -642,7 +692,7 @@ prepare_svclone_output = function(svclone_file, vcf_template, genome, sv_vcf_fil
   
   for (i in 1:length(is_swapped)) {
     entry = d.info[grepl(is_swapped[i], d.info$id),]
-    d.info[grepl(is_swapped[i], d.info$id), c("chr1", "pos1", "chr2", "pos2")] = entry[,c("chr2", "pos1", "chr1", "pos2")]
+    d.info[grepl(is_swapped[i], d.info$id), c("chr1", "pos1", "chr2", "pos2")] = entry[,c("chr1", "pos2", "chr2", "pos1")]
   }
   
   d.v = VCF(rowRanges=d.gr, exptData=metadata(v), geno=geno(v), fixed=rep(fixed(v)[1,], nrow(d)), colData=colData(v), info=d.info)
