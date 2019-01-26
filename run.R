@@ -440,21 +440,21 @@ if (any(all_timing_probs < 0, na.rm=T)) {
 # check that all mutations have been accounted for
 if (length(vcf_snv) != sum(assign_probs$mut_type=="SNV")) { print("Did not assign all SNVs") }
 if (length(vcf_indel) != sum(assign_probs$mut_type=="indel")) { print("Did not assign all indels") }
-if ((2*length(vcf_sv)) != sum(assign_probs$mut_type=="SV")) { print("Did not assign all SVs") }
 
-assign_chrpos = paste(assign_probs$chromosome, "_", assign_probs$position, sep="")
-timing_chrpos = paste(timing$chromosome, "_", timing$position, sep="")
-
-orig_vcf_sv = readVcf(sv_vcf_file, "GRCh37")
-orig_chrpos = paste(as.character(seqnames(orig_vcf_sv)), "_", start(orig_vcf_sv), sep="")
-# if (length(intersect(assign_chrpos[assign_probs$mut_type=="SV"], orig_chrpos))!=(2*length(vcf_sv)) | length(intersect(timing_chrpos[timing$mut_type=="SV"], orig_chrpos))!=(2*length(vcf_sv))) { 
-if (any(assign_chrpos[assign_probs$mut_type=="SV"]!=orig_chrpos) | any(timing_chrpos[timing$mut_type=="SV"]!=orig_chrpos)) { 
-  print("SV position discrepancy detected") 
+if (!is.null(vcf_sv)) {
+  assign_chrpos = paste(assign_probs$chromosome, "_", assign_probs$position, sep="")
+  timing_chrpos = paste(timing$chromosome, "_", timing$position, sep="")
   
-  print(which(!assign_chrpos[assign_probs$mut_type=="SV"]==orig_chrpos))
-  print(which(!timing_chrpos[assign_probs$mut_type=="SV"]==orig_chrpos))
-  
-  
+  orig_vcf_sv = readVcf(sv_vcf_file, "GRCh37")
+  orig_chrpos = paste(as.character(seqnames(orig_vcf_sv)), "_", start(orig_vcf_sv), sep="")
+  # if (length(intersect(assign_chrpos[assign_probs$mut_type=="SV"], orig_chrpos))!=(2*length(vcf_sv)) | length(intersect(timing_chrpos[timing$mut_type=="SV"], orig_chrpos))!=(2*length(vcf_sv))) { 
+  if (any(assign_chrpos[assign_probs$mut_type=="SV"]!=orig_chrpos) | any(timing_chrpos[timing$mut_type=="SV"]!=orig_chrpos)) { 
+    print("SV position discrepancy detected") 
+    
+    print(which(!assign_chrpos[assign_probs$mut_type=="SV"]==orig_chrpos))
+    print(which(!timing_chrpos[assign_probs$mut_type=="SV"]==orig_chrpos))
+    stop("SV positions off")
+  }
 }
 
 ########################################################################
