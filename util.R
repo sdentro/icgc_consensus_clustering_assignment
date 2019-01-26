@@ -648,6 +648,10 @@ prepare_svclone_output = function(svclone_file, vcf_template, genome, sv_vcf_fil
   minor_cn = array(NA, length(mutCount))
   ids = array(NA, length(mutCount))
   original_pos = array(NA, length(mutCount))
+  chr1 = array(NA, length(mutCount))
+  chr2 = array(NA, length(mutCount))
+  pos1 = array(NA, length(mutCount))
+  pos2 = array(NA, length(mutCount))
   
   #' Select the preferred SV end from SVclone
   sv_chrom_pos = data.frame()
@@ -660,7 +664,11 @@ prepare_svclone_output = function(svclone_file, vcf_template, genome, sv_vcf_fil
       minor_cn[i] = copy_number[2]
 
       # save the original position, and renumber the position with the row index. it cannot be guaranteed that 
-      # pos1, pos2, original_pos1 or original_pos2 are unique. Hence the renumbering      
+      # pos1, pos2, original_pos1 or original_pos2 are unique. Hence the renumbering    
+      chr1[i] = dat$chr1[i]
+      chr2[i] = dat$chr2[i]
+      pos1[i] = dat$original_pos1[i]
+      pos2[i] = dat$original_pos2[i]
       original_pos[i] = dat$original_pos1[i]
       sv_chrom_pos = rbind(sv_chrom_pos, data.frame(chrom=as.character(dat$chr1[i]), pos=i, stringsAsFactors=F))
       WTCount[i] = dat$adjusted_norm1[i]
@@ -673,6 +681,10 @@ prepare_svclone_output = function(svclone_file, vcf_template, genome, sv_vcf_fil
       
       # save the original position, and renumber the position with the row index. it cannot be guaranteed that
       # pos1, pos2, original_pos1 or original_pos2 are unique. Hence the renumbering
+      chr1[i] = dat$chr2[i]
+      chr2[i] = dat$chr1[i]
+      pos1[i] = dat$original_pos2[i]
+      pos2[i] = dat$original_pos1[i]
       original_pos[i] = dat$original_pos2[i]
       sv_chrom_pos = rbind(sv_chrom_pos, data.frame(chrom=as.character(dat$chr2[i]), pos=i, stringsAsFactors=F))
       WTCount[i] = dat$adjusted_norm2[i]
@@ -685,7 +697,7 @@ prepare_svclone_output = function(svclone_file, vcf_template, genome, sv_vcf_fil
   v <- readVcf(snv_vcf_file, genome=genome)
   d = data.frame(chromosome=sv_chrom_pos$chrom, position=sv_chrom_pos$pos, stringsAsFactors=F)
   d.gr = makeGRangesFromDataFrame(d, start.field="position", end.field="position")
-  d.info = DataFrame(t_alt_count=mutCount, t_ref_count=WTCount, chr1=dat$chr1, pos1=dat$original_pos1, chr2=dat$chr2, pos2=dat$original_pos2, id=ids, major_cn=major_cn, minor_cn=minor_cn, original_pos=original_pos)
+  d.info = DataFrame(t_alt_count=mutCount, t_ref_count=WTCount, chr1=chr1, pos1=pos1, chr2=chr2, pos2=pos2, id=ids, major_cn=major_cn, minor_cn=minor_cn, original_pos=original_pos)
   
   # SVclone does sorting and swaps chr1/pos1 with chr2/pos2 when chr2 < chr1. To get the original ordering back we need to switch here
   is_swapped = get_swapped_pairs(sv_vcf_file, genome)
