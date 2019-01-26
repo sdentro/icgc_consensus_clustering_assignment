@@ -95,6 +95,7 @@ source(file.path(libpath, "util.R")) # this must occur after loading mtimer as i
 library(ggplot2)
 library(gridExtra)
 library(grid)
+library(gtools)
 
 # Overdispersion parameter
 rho_snv = 0.01

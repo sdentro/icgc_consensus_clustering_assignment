@@ -546,9 +546,9 @@ parse_sv_data = function(cn_assignment_file, vafs_file) {
   return(as.data.frame(do.call(rbind, res)))
 }
 
+#' build a table with chr/pos for every SV
 get_sv_chrpos_table = function(sv_vcf_file, genome) {
-  vcf = readVcf(sv_vcf_file, genome=genome)
-
+  vcf = VariantAnnotation::readVcf(sv_vcf_file, genome=genome)
   raw_chr_pos = data.frame()
   for (i in 1:nrow(vcf)) {
     sv_id = rownames(info(vcf))[i]
@@ -562,28 +562,10 @@ get_sv_chrpos_table = function(sv_vcf_file, genome) {
   return(raw_chr_pos)
 }
 
-#' Function to establish IDs of SVs which have had their chr/pos swapped due to sorting done by SVclone
-get_swapped_pairs = function(sv_vcf_file, genome) {
-  vcf = readVcf(sv_vcf_file, genome=genome)
-  chrom_names = gtools::mixedsort(unique(as.character(seqnames(vcf))))
-  chrom_index = gtools::mixedorder(chrom_names)
-  names(chrom_index) = chrom_names
-
-  raw_chr_pos = get_sv_chrpos_table(sv_vcf_file, genome)
-  # swapping occurs when the _first mentioned_ breakpoints chromosome is lower than the _second mentioned_
-  raw_chr_pos_first = raw_chr_pos[raw_chr_pos$is_first_mention,]
-  
-  is_swapped = raw_chr_pos_first$sv_id[(chrom_index[raw_chr_pos_first$chr1] > chrom_index[raw_chr_pos_first$chr2]) | 
-				       (chrom_index[raw_chr_pos_first$chr1] == chrom_index[raw_chr_pos_first$chr2] & raw_chr_pos_first$pos1 > raw_chr_pos_first$pos2)]
-  is_swapped = unlist(lapply(is_swapped, function(x) unlist(strsplit(x, "_"))[1]))
-  
-  return(is_swapped)
-}
-
 #' Function that returns missing SV breakpoints from the SVclone data
 get_missing_entries = function(sv_vcf_file, genome, df) {
   svclone = read.table(svclone_file, header=T, stringsAsFactors=F, sep="\t")
-  vcf = readVcf(sv_vcf_file, genome)
+  vcf = VariantAnnotation::readVcf(sv_vcf_file, genome)
   
   all_svids = rownames(info(vcf))
   return(setdiff(all_svids, df$svid))
@@ -592,7 +574,7 @@ get_missing_entries = function(sv_vcf_file, genome, df) {
 #' Adds SVs that were not in the SVclone output to the specified df
 add_missing_entries = function(sv_vcf_file, genome, df) {
   missing_ids = get_missing_entries(sv_vcf_file, genome, df)
-  vcf = readVcf(sv_vcf_file, genome)
+  vcf = VariantAnnotation::readVcf(sv_vcf_file, genome)
   ids_order = rownames(info(vcf))
   index_missing_ids = which(ids_order %in% missing_ids)
   
@@ -690,13 +672,6 @@ prepare_svclone_output = function(svclone_file, vcf_template, genome, sv_vcf_fil
     
     chrom_names = gtools::mixedsort(unique(c(dat$chr1, dat$chr2)))
     chrom_index = gtools::mixedorder(chrom_names)
-    names(chrom_index) = chrom_names
-    print("GETTING INDEX")
-    print(dat[i,c("chr1","chr2","original_pos1","original_pos2","original_ID","preferred_side")])
-    print(chrom_index)
-    print(chrom_index[dat$chr1[i]])
-    print(chrom_index[dat$chr2[i]])
-    print(head(orig_chrpos))
     if (dat$preferred_side[i]==0) {
       chr1[i] = orig_chrpos$chr1[orig_chrpos$sv_id==dat$original_ID[i]]
       chr2[i] = orig_chrpos$chr2[orig_chrpos$sv_id==dat$original_ID[i]]
@@ -717,15 +692,6 @@ prepare_svclone_output = function(svclone_file, vcf_template, genome, sv_vcf_fil
   d = data.frame(chromosome=sv_chrom_pos$chrom, position=sv_chrom_pos$pos, stringsAsFactors=F)
   d.gr = makeGRangesFromDataFrame(d, start.field="position", end.field="position")
   d.info = DataFrame(t_alt_count=mutCount, t_ref_count=WTCount, chr1=chr1, pos1=pos1, chr2=chr2, pos2=pos2, id=ids, major_cn=major_cn, minor_cn=minor_cn, original_pos=original_pos)
-  
-  # SVclone does sorting and swaps chr1/pos1 with chr2/pos2 when chr2 < chr1. To get the original ordering back we need to switch here
-  is_swapped = get_swapped_pairs(sv_vcf_file, genome)
-  
-  #for (i in 1:length(is_swapped)) {
-  #  entry = d.info[grepl(is_swapped[i], d.info$id),]
-  #  d.info[grepl(is_swapped[i], d.info$id), c("chr1", "pos1", "chr2", "pos2")] = entry[,c("chr2", "pos1", "chr1", "pos2")]
-  #}
-  
   d.v = VCF(rowRanges=d.gr, exptData=metadata(v), geno=geno(v), fixed=rep(fixed(v)[1,], nrow(d)), colData=colData(v), info=d.info)
   return(d.v)
 }
