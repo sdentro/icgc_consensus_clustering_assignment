@@ -22,11 +22,15 @@ source(file.path(libpath, "util.R"))
 ########################################################################
 # Build the timing
 ########################################################################
+timing_disagree = data.frame()
 for (infile in list.files(indir, pattern="_assignment.RData", full.names=T)) {
   # clear anything from previous sample
   try(rm(MCN_indel, MCN, MCN_sv, MCN_sv_alt, vcf_snv, vcf_indel, vcf_sv, vcf_sv_alt), silent=T)
   
+  count_timing_disagree = 0
+  
   load(infile)
+  print(samplename)
   snv_timing = data.frame(chromosome=as.character(seqnames(vcf_snv)),
                           position=as.numeric(start(vcf_snv)),
                           mut_type=rep("SNV", nrow(MCN$D)),
@@ -66,9 +70,6 @@ for (infile in list.files(indir, pattern="_assignment.RData", full.names=T)) {
                            prob_not_gained=MCN_sv$D$pSingle,
                            prob_subclonal=MCN_sv$D$pSub,
                            stringsAsFactors=F)
-    # reset probabilities if one cannot distinguish between clonal early and late
-    sv_timing$prob_clonal_early[as.character(sv_timing$timing)=="clonal [NA]"] = NA
-    sv_timing$prob_clonal_late[as.character(sv_timing$timing)=="clonal [NA]"] = NA
     
     if (!is.null(vcf_sv_alt)) {
       # here we use the other SV breakpoint for a separate assignment
@@ -79,13 +80,11 @@ for (infile in list.files(indir, pattern="_assignment.RData", full.names=T)) {
                                  chromosome2=info(vcf_sv_alt)$chr2,
                                  position2=info(vcf_sv_alt)$pos2,
                                  svid=info(vcf_sv_alt)$id,
-                                 prob_clonal_early=MCN_sv_alt$D$pGain,
-                                 prob_clonal_late=MCN_sv_alt$D$pSingle,
+                                 prob_gained=MCN_sv_alt$D$pGain,
+                                 prob_not_gained=MCN_sv_alt$D$pSingle,
                                  prob_subclonal=MCN_sv_alt$D$pSub,
                                  stringsAsFactors=F)
-      # reset probabilities if one cannot distinguish between clonal early and late
-      sv_alt_timing$prob_clonal_early[as.character(sv_alt_timing$timing)=="clonal [NA]"] = NA
-      sv_alt_timing$prob_clonal_late[as.character(sv_alt_timing$timing)=="clonal [NA]"] = NA
+
       sv_timing = rbind(sv_timing, sv_alt_timing)
       
     } else {
@@ -111,6 +110,7 @@ for (infile in list.files(indir, pattern="_assignment.RData", full.names=T)) {
     if (nrow(final_pcawg11_output$final_clusters) > 1) {
       before = colSums(sv_output[, grepl("cluster_", colnames(sv_output))], na.rm=T) / 2
       masked = c()
+      # problematic = data.frame()
       # assignment probabilties for some sv breakpoint pairs differ a lot. here those are masked, because we don't really know where these belong
       for (svid in unlist(lapply(sv_output$svid, function(x) unlist(strsplit(x, "_"))[1]))) {
         probs_bp_a = sv_output[sv_output$svid==paste0(svid, "_1"), grepl("cluster_", colnames(sv_output))]
@@ -148,6 +148,17 @@ for (infile in list.files(indir, pattern="_assignment.RData", full.names=T)) {
           if (!is.na(sv_timing[sv_timing$svid==paste0(svid, "_1"), "timing"]) & sv_timing[sv_timing$svid==paste0(svid, "_1"), "timing"] != sv_timing[sv_timing$svid==paste0(svid, "_2"), "timing"]) {
             sv_timing[sv_timing$svid==paste0(svid, "_1"), "timing"] = NA
             sv_timing[sv_timing$svid==paste0(svid, "_2"), "timing"] = NA
+            sv_timing[sv_timing$svid==paste0(svid, "_1"), grepl("prob_", colnames(sv_timing))] = NA
+            sv_timing[sv_timing$svid==paste0(svid, "_2"), grepl("prob_", colnames(sv_timing))] = NA
+            
+            count_timing_disagree = count_timing_disagree + 1
+            # problematic = c(problematic, svid)
+            
+            res = data.frame(svid=svid,
+                             timing[which(grepl(paste(svid, "_", sep=""), timing$svid)),c("timing", "prob_gained", "prob_not_gained", "prob_subclonal")],
+                             output[which(grepl(paste(svid, "_", sep=""), timing$svid)),c("ccf", "major_cn", "minor_cn", "mcn", "mult")],
+                             assign_probs[which(grepl(paste(svid, "_", sep=""), timing$svid)),grepl("cluster_", colnames(assign_probs))])
+            # problematic = rbind(problematic, res)
           }
         }
       }
@@ -170,6 +181,16 @@ for (infile in list.files(indir, pattern="_assignment.RData", full.names=T)) {
     timing = rbind(snv_timing, indel_timing)
     assign_probs = rbind(snv_output, indel_output)
   }
+  timing[, c("chromosome", "position", "chromosome2", "position2")] = assign_probs[, c("chromosome", "position", "chromosome2", "position2")]
+  write.table(timing, file=file.path(outputdir, paste0(samplename, "_prob_gained.txt")), quote=F, row.names=F, sep="\t")
   
-  write.table(timing, file=file.path(outdir, paste0(samplename, "_prob_gained.txt")), quote=F, row.names=F, sep="\t")
+  timing_disagree = rbind(timing_disagree, data.frame(samplename=samplename, count=count_timing_disagree, stringsAsFactors=F))
 }
+write.table(timing_disagree, file=file.path(outputdir, paste0(samplename, "_timing_disagree.txt")), quote=F, row.names=F, sep="\t")
+
+
+
+svid = "SVMERGE727"
+
+
+

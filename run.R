@@ -450,8 +450,8 @@ orig_chrpos = paste(as.character(seqnames(orig_vcf_sv)), "_", start(orig_vcf_sv)
 if (any(assign_chrpos[assign_probs$mut_type=="SV"]!=orig_chrpos) | any(timing_chrpos[timing$mut_type=="SV"]!=orig_chrpos)) { 
   print("SV position discrepancy detected") 
   
-  print(which(!assign_chrpos==orig_chrpos))
-  print(which(!timing_chrpos==orig_chrpos))
+  print(which(!assign_chrpos[assign_probs$mut_type=="SV"]==orig_chrpos))
+  print(which(!timing_chrpos[assign_probs$mut_type=="SV"]==orig_chrpos))
   
   
 }

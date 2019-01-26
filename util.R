@@ -573,7 +573,8 @@ get_swapped_pairs = function(sv_vcf_file, genome) {
   # swapping occurs when the _first mentioned_ breakpoints chromosome is lower than the _second mentioned_
   raw_chr_pos_first = raw_chr_pos[raw_chr_pos$is_first_mention,]
   
-  is_swapped = raw_chr_pos_first$sv_id[chrom_index[raw_chr_pos_first$chr1] > chrom_index[raw_chr_pos_first$chr2]]
+  is_swapped = raw_chr_pos_first$sv_id[(chrom_index[raw_chr_pos_first$chr1] > chrom_index[raw_chr_pos_first$chr2]) | 
+				       (chrom_index[raw_chr_pos_first$chr1] == chrom_index[raw_chr_pos_first$chr2] & raw_chr_pos_first$pos1 > raw_chr_pos_first$pos2)]
   is_swapped = unlist(lapply(is_swapped, function(x) unlist(strsplit(x, "_"))[1]))
   
   return(is_swapped)
@@ -605,10 +606,10 @@ add_missing_entries = function(sv_vcf_file, genome, df) {
   
   # select a template and reset columns depending on df supplied
   dummy_entry = df[1,,drop=F]
-  if ("prob_" %in% colnames(dummy_entry)) {
+  if (any(grepl("prob_", colnames(dummy_entry)))) {
     dummy_entry[,grepl("prob_", colnames(dummy_entry))] = NA
     dummy_entry[,"timing"] = NA
-  } else if ("cluster_" %in% colnames(dummy_entry)) {
+  } else if (any(grepl("cluster_", colnames(dummy_entry)))) {
     dummy_entry[,grepl("cluster_", colnames(dummy_entry))] = NA
   } else {
     stop("Unexpected data.frame format when inserting missing SVs")
@@ -684,22 +685,41 @@ prepare_svclone_output = function(svclone_file, vcf_template, genome, sv_vcf_fil
       WTCount[i] = dat$adjusted_norm2[i]
       # replace XYZ1_1 with XYZ1_2 or XYZ1_2 with XYZ1_1
       ids[i] = ifelse(grepl("_1", dat$original_ID[i]), gsub("_1", "_2", dat$original_ID[i]), gsub("_2", "_1", dat$original_ID[i]))
-    } 
+    }
     
+    chrom_names = gtools::mixedsort(unique(c(dat$chr1, dat$chr2)))
+    chrom_index = gtools::mixedorder(chrom_names)
+    names(chrom_index) = chrom_names
+    print("GETTING INDEX")
+    print(dat[i,c("chr1","chr2","original_pos1","original_pos2","original_ID","preferred_side")])
+    print(chrom_index)
+    print(dat[i,c("chr1","chr2")])
+    print(chrom_index[dat$chr1[i]])
+    print(chrom_index[dat$chr2[i]])
     if (dat$preferred_side[i]==0) {
-      chr1[i] = dat$chr1[i]
-      chr2[i] = dat$chr2[i]
+      if (chrom_index[as.character(dat$chr1[i])] > chrom_index[as.character(dat$chr2[i])]) {
+        chr1[i] = dat$chr2[i]
+        chr2[i] = dat$chr1[i]
+      } else {
+        chr1[i] = dat$chr1[i]
+        chr2[i] = dat$chr2[i]
+      }
+      
       pos1[i] = dat$original_pos1[i]
       pos2[i] = dat$original_pos2[i]
       original_pos[i] = dat$original_pos1[i]
     } else {
-      chr1[i] = dat$chr2[i]
-      chr2[i] = dat$chr1[i]
+      if (chrom_index[as.character(dat$chr1[i])] > chrom_index[as.character(dat$chr2[i])]) {
+        chr1[i] = dat$chr1[i]
+        chr2[i] = dat$chr2[i]
+      } else {
+        chr1[i] = dat$chr2[i]
+        chr2[i] = dat$chr1[i]
+      }
       pos1[i] = dat$original_pos2[i]
       pos2[i] = dat$original_pos1[i]
       original_pos[i] = dat$original_pos2[i]
     }
-    
   }
   
   # Now push this into a VCF format with just alt and ref counts
@@ -711,10 +731,10 @@ prepare_svclone_output = function(svclone_file, vcf_template, genome, sv_vcf_fil
   # SVclone does sorting and swaps chr1/pos1 with chr2/pos2 when chr2 < chr1. To get the original ordering back we need to switch here
   is_swapped = get_swapped_pairs(sv_vcf_file, genome)
   
-  for (i in 1:length(is_swapped)) {
-    entry = d.info[grepl(is_swapped[i], d.info$id),]
-    d.info[grepl(is_swapped[i], d.info$id), c("chr1", "pos1", "chr2", "pos2")] = entry[,c("chr1", "pos2", "chr2", "pos1")]
-  }
+  #for (i in 1:length(is_swapped)) {
+  #  entry = d.info[grepl(is_swapped[i], d.info$id),]
+  #  d.info[grepl(is_swapped[i], d.info$id), c("chr1", "pos1", "chr2", "pos2")] = entry[,c("chr2", "pos1", "chr1", "pos2")]
+  #}
   
   d.v = VCF(rowRanges=d.gr, exptData=metadata(v), geno=geno(v), fixed=rep(fixed(v)[1,], nrow(d)), colData=colData(v), info=d.info)
   return(d.v)
