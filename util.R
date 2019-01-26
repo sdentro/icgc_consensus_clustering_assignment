@@ -698,17 +698,17 @@ prepare_svclone_output = function(svclone_file, vcf_template, genome, sv_vcf_fil
     print(chrom_index[dat$chr1[i]])
     print(chrom_index[dat$chr2[i]])
     if (dat$preferred_side[i]==0) {
-      chr1[i] = orig_chrpos$chr1[orig_chrpos$svid==dat$original_ID[i]]
-      chr2[i] = orig_chrpos$chr2[orig_chrpos$svid==dat$original_ID[i]]
-      pos1[i] = orig_chrpos$original_pos1[orig_chrpos$svid==dat$original_ID[i]]
-      pos2[i] = orig_chrpos$original_pos2[orig_chrpos$svid==dat$original_ID[i]]
-      original_pos[i] = orig_chrpos$original_pos1[orig_chrpos$svid==dat$original_ID[i]]
+      chr1[i] = orig_chrpos$chr1[orig_chrpos$sv_id==dat$original_ID[i]]
+      chr2[i] = orig_chrpos$chr2[orig_chrpos$sv_id==dat$original_ID[i]]
+      pos1[i] = orig_chrpos$original_pos1[orig_chrpos$sv_id==dat$original_ID[i]]
+      pos2[i] = orig_chrpos$original_pos2[orig_chrpos$sv_id==dat$original_ID[i]]
+      original_pos[i] = orig_chrpos$original_pos1[orig_chrpos$sv_id==dat$original_ID[i]]
     } else {
-      chr1[i] = orig_chrpos$chr2[orig_chrpos$svid==dat$original_ID[i]]
-      chr2[i] = orig_chrpos$chr1[orig_chrpos$svid==dat$original_ID[i]]
-      pos1[i] = orig_chrpos$original_pos2[orig_chrpos$svid==dat$original_ID[i]]
-      pos2[i] = orig_chrpos$original_pos1[orig_chrpos$svid==dat$original_ID[i]]
-      original_pos[i] = orig_chrpos$original_pos2[orig_chrpos$svid==dat$original_ID[i]]
+      chr1[i] = orig_chrpos$chr2[orig_chrpos$sv_id==dat$original_ID[i]]
+      chr2[i] = orig_chrpos$chr1[orig_chrpos$sv_id==dat$original_ID[i]]
+      pos1[i] = orig_chrpos$original_pos2[orig_chrpos$sv_id==dat$original_ID[i]]
+      pos2[i] = orig_chrpos$original_pos1[orig_chrpos$sv_id==dat$original_ID[i]]
+      original_pos[i] = orig_chrpos$original_pos2[orig_chrpos$sv_id==dat$original_ID[i]]
     }
   }
   
