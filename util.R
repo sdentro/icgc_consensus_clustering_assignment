@@ -645,6 +645,7 @@ add_missing_entries = function(sv_vcf_file, genome, df) {
 #' @author sd11
 prepare_svclone_output = function(svclone_file, vcf_template, genome, sv_vcf_file, take_preferred_breakpoint=T) {
   dat = read.table(svclone_file, header=T, stringsAsFactors=F, sep="\t")
+  orig_chrpos = get_sv_chrpos_table(sv_vcf_file, genome)
   
   mutCount = dat$adjusted_support
   # WTCount = dat$adjusted_depth-dat$adjusted_support
@@ -697,28 +698,17 @@ prepare_svclone_output = function(svclone_file, vcf_template, genome, sv_vcf_fil
     print(chrom_index[dat$chr1[i]])
     print(chrom_index[dat$chr2[i]])
     if (dat$preferred_side[i]==0) {
-      if (chrom_index[as.character(dat$chr1[i])] > chrom_index[as.character(dat$chr2[i])]) {
-        chr1[i] = dat$chr2[i]
-        chr2[i] = dat$chr1[i]
-      } else {
-        chr1[i] = dat$chr1[i]
-        chr2[i] = dat$chr2[i]
-      }
-      
-      pos1[i] = dat$original_pos1[i]
-      pos2[i] = dat$original_pos2[i]
-      original_pos[i] = dat$original_pos1[i]
+      chr1[i] = orig_chrpos$chr1[orig_chrpos$svid==dat$original_ID[i]]
+      chr2[i] = orig_chrpos$chr2[orig_chrpos$svid==dat$original_ID[i]]
+      pos1[i] = orig_chrpos$original_pos1[orig_chrpos$svid==dat$original_ID[i]]
+      pos2[i] = orig_chrpos$original_pos2[orig_chrpos$svid==dat$original_ID[i]]
+      original_pos[i] = orig_chrpos$original_pos1[orig_chrpos$svid==dat$original_ID[i]]
     } else {
-      if (chrom_index[as.character(dat$chr1[i])] > chrom_index[as.character(dat$chr2[i])]) {
-        chr1[i] = dat$chr1[i]
-        chr2[i] = dat$chr2[i]
-      } else {
-        chr1[i] = dat$chr2[i]
-        chr2[i] = dat$chr1[i]
-      }
-      pos1[i] = dat$original_pos2[i]
-      pos2[i] = dat$original_pos1[i]
-      original_pos[i] = dat$original_pos2[i]
+      chr1[i] = orig_chrpos$chr2[orig_chrpos$svid==dat$original_ID[i]]
+      chr2[i] = orig_chrpos$chr1[orig_chrpos$svid==dat$original_ID[i]]
+      pos1[i] = orig_chrpos$original_pos2[orig_chrpos$svid==dat$original_ID[i]]
+      pos2[i] = orig_chrpos$original_pos1[orig_chrpos$svid==dat$original_ID[i]]
+      original_pos[i] = orig_chrpos$original_pos2[orig_chrpos$svid==dat$original_ID[i]]
     }
   }
   
