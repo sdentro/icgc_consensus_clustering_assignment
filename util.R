@@ -547,13 +547,8 @@ parse_sv_data = function(cn_assignment_file, vafs_file) {
 }
 
 get_sv_chrpos_table = function(sv_vcf_file, genome) {
-  vcf = readVcf(sv_vcf_file, genome)
-  
-  # establish an order for chromosomes - this is later used to determine whether breakpoints of an SV have been swapped
-  chrom_names = gtools::mixedsort(unique(as.character(seqnames(vcf))))
-  chrom_index = gtools::mixedorder(chrom_names)
-  names(chrom_index) = chrom_names
-  
+  vcf = readVcf(sv_vcf_file, genome=genome)
+
   raw_chr_pos = data.frame()
   for (i in 1:nrow(vcf)) {
     sv_id = rownames(info(vcf))[i]
@@ -569,6 +564,11 @@ get_sv_chrpos_table = function(sv_vcf_file, genome) {
 
 #' Function to establish IDs of SVs which have had their chr/pos swapped due to sorting done by SVclone
 get_swapped_pairs = function(sv_vcf_file, genome) {
+  vcf = readVcf(sv_vcf_file, genome=genome)
+  chrom_names = gtools::mixedsort(unique(as.character(seqnames(vcf))))
+  chrom_index = gtools::mixedorder(chrom_names)
+  names(chrom_index) = chrom_names
+
   raw_chr_pos = get_sv_chrpos_table(sv_vcf_file, genome)
   # swapping occurs when the _first mentioned_ breakpoints chromosome is lower than the _second mentioned_
   raw_chr_pos_first = raw_chr_pos[raw_chr_pos$is_first_mention,]
@@ -694,21 +694,21 @@ prepare_svclone_output = function(svclone_file, vcf_template, genome, sv_vcf_fil
     print("GETTING INDEX")
     print(dat[i,c("chr1","chr2","original_pos1","original_pos2","original_ID","preferred_side")])
     print(chrom_index)
-    print(dat[i,c("chr1","chr2")])
     print(chrom_index[dat$chr1[i]])
     print(chrom_index[dat$chr2[i]])
+    print(head(orig_chrpos))
     if (dat$preferred_side[i]==0) {
       chr1[i] = orig_chrpos$chr1[orig_chrpos$sv_id==dat$original_ID[i]]
       chr2[i] = orig_chrpos$chr2[orig_chrpos$sv_id==dat$original_ID[i]]
-      pos1[i] = orig_chrpos$original_pos1[orig_chrpos$sv_id==dat$original_ID[i]]
-      pos2[i] = orig_chrpos$original_pos2[orig_chrpos$sv_id==dat$original_ID[i]]
-      original_pos[i] = orig_chrpos$original_pos1[orig_chrpos$sv_id==dat$original_ID[i]]
+      pos1[i] = orig_chrpos$pos1[orig_chrpos$sv_id==dat$original_ID[i]]
+      pos2[i] = orig_chrpos$pos2[orig_chrpos$sv_id==dat$original_ID[i]]
+      original_pos[i] = orig_chrpos$pos1[orig_chrpos$sv_id==dat$original_ID[i]]
     } else {
       chr1[i] = orig_chrpos$chr2[orig_chrpos$sv_id==dat$original_ID[i]]
       chr2[i] = orig_chrpos$chr1[orig_chrpos$sv_id==dat$original_ID[i]]
-      pos1[i] = orig_chrpos$original_pos2[orig_chrpos$sv_id==dat$original_ID[i]]
-      pos2[i] = orig_chrpos$original_pos1[orig_chrpos$sv_id==dat$original_ID[i]]
-      original_pos[i] = orig_chrpos$original_pos2[orig_chrpos$sv_id==dat$original_ID[i]]
+      pos1[i] = orig_chrpos$pos2[orig_chrpos$sv_id==dat$original_ID[i]]
+      pos2[i] = orig_chrpos$pos1[orig_chrpos$sv_id==dat$original_ID[i]]
+      original_pos[i] = orig_chrpos$pos2[orig_chrpos$sv_id==dat$original_ID[i]]
     }
   }
   
