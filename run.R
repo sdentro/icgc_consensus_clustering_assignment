@@ -569,9 +569,12 @@ if (!is.null(vcf_sv) && any(!is.na(sv_mtimer$plot_data$ccf))) {
   p5 = make_dummy_figure()
 }
 
-if (!is.null(vcf_sv) && any(!is.na(sv_mtimer$plot_data$ccf)) && any(sv_mtimer$plot_data$ccf < 1.5)) {
+if (!is.null(vcf_sv) && !is.null(vcf_indel) &&  any(!is.na(sv_mtimer$plot_data$ccf)) && any(sv_mtimer$plot_data$ccf < 1.5)) {
   all_data = do.call(rbind, list(snv_binom$plot_data, indel_binom$plot_data, sv_binom$plot_data))
   all_data$type = factor(c(rep("SNV", nrow(snv_binom$plot_data)), rep("indel", nrow(indel_binom$plot_data)), rep("sv", nrow(sv_binom$plot_data))), levels=c("SNV", "indel", "sv"))
+} else if (!is.null(vcf_sv) && is.null(vcf_indel) &&  any(!is.na(sv_mtimer$plot_data$ccf)) && any(sv_mtimer$plot_data$ccf < 1.5)) {
+  all_data = do.call(rbind, list(snv_binom$plot_data, sv_binom$plot_data))
+  all_data$type = factor(c(rep("SNV", nrow(snv_binom$plot_data)), rep("sv", nrow(sv_binom$plot_data))), levels=c("SNV", "sv"))
 } else if(!is.null(vcf_indel)) {
   all_data = do.call(rbind, list(snv_binom$plot_data, indel_binom$plot_data))
   all_data$type = factor(c(rep("SNV", nrow(snv_binom$plot_data)), rep("indel", nrow(indel_binom$plot_data))), levels=c("SNV", "indel", "sv"))
