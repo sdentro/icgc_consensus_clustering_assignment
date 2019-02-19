@@ -593,6 +593,8 @@ add_missing_entries = function(sv_vcf_file, genome, df) {
     dummy_entry[,"timing"] = NA
   } else if (any(grepl("cluster_", colnames(dummy_entry)))) {
     dummy_entry[,grepl("cluster_", colnames(dummy_entry))] = NA
+  } else if (any(c("ccf", "major_cn", "minor_cn","mcn","mult") %in% colnames(dummy_entry))) { 
+    dummy_entry[,c("ccf", "major_cn", "minor_cn","mcn","mult")] = NA
   } else {
     stop("Unexpected data.frame format when inserting missing SVs")
   }

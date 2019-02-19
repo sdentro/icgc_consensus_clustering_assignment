@@ -63,6 +63,8 @@ for (infile in list.files(indir, pattern="_assignment.RData", full.names=T)) {
     # sync chromosome and position
     output_sv[, c("chromosome", "position", "chromosome2", "position2")] = sv_output[,c("chromosome", "position", "chromosome2", "position2")]
     output_sv$type = "SV"
+    # add missing SV ids that did not make it into the SVclone output
+    output_sv = add_missing_entries(sv_vcf_file, "GRCh37", output_sv)
   } else {
     output_sv = NULL
   }
