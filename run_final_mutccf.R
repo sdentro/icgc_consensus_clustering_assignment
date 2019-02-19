@@ -52,9 +52,11 @@ for (infile in list.files(indir, pattern="_assignment.RData", full.names=T)) {
   
   output_snv = get_ccf(vcf_snv, MCN$D, purity)
   output_snv$type = "SNV"
+  output_snv$svid = NA
   if (!is.null(vcf_indel) && nrow(MCN_indel$D) > 0) {
     output_indel = get_ccf(vcf_indel, MCN_indel$D, purity)
     output_indel$type = "indel"
+    output_indel$svid = NA
   } else {
     output_indel = NULL
   }
@@ -63,6 +65,7 @@ for (infile in list.files(indir, pattern="_assignment.RData", full.names=T)) {
     # sync chromosome and position
     output_sv[, c("chromosome", "position", "chromosome2", "position2")] = sv_output[,c("chromosome", "position", "chromosome2", "position2")]
     output_sv$type = "SV"
+    output_sv$svid = sv_output$svid
     # add missing SV ids that did not make it into the SVclone output
     output_sv = add_missing_entries(sv_vcf_file, "GRCh37", output_sv)
   } else {
