@@ -431,7 +431,7 @@ if (any(all_timing_probs < 0, na.rm=T)) {
   if (all(all_timing_probs[!is.na(all_timing_probs) & all_timing_probs < 0] > -2*.Machine$double.eps)) {
     print("Encountered negative timing probabilities due to rounding")
     all_timing_probs[!is.na(all_timing_probs) & all_timing_probs < 0] = round(all_timing_probs[!is.na(all_timing_probs) & all_timing_probs < 0])
-    timing[,grepl("cluster_", colnames(timing))] = all_timing_probs
+    timing[,grepl("prob_", colnames(timing))] = all_timing_probs
   } else {
     stop("Encountered major negative timing probabilities")
   }
