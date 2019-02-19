@@ -173,6 +173,10 @@ for (infile in list.files(indir, pattern="_assignment.RData", full.names=T)) {
       }
     }
     
+    # add missing SV ids that did not make it into the SVclone output
+    sv_timing = add_missing_entries(sv_vcf_file, "GRCh37", sv_timing)
+    sv_output = add_missing_entries(sv_vcf_file, "GRCh37", sv_output)
+    
     timing = do.call(rbind, list(snv_timing, indel_timing, sv_timing))
     assign_probs = do.call(rbind, list(snv_output, indel_output, sv_output))
     
