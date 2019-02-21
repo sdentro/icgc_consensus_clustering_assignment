@@ -104,7 +104,7 @@ for (infile in list.files(indir, pattern="_assignment.RData", full.names=T)) {
                            position2=final_pcawg11_output$sv_assignments$pos2,
                            svid=final_pcawg11_output$sv_assignments$id,
                            stringsAsFactors=F)
-    
+
     # If the sample is not clonal, then we look to merge the SV breakpoint assignment probabilities (i.e. each SV up until now
     # has two probabilities, one for each breakpoint, here they are merged into one)
     if (nrow(final_pcawg11_output$final_clusters) > 1) {
@@ -154,10 +154,10 @@ for (infile in list.files(indir, pattern="_assignment.RData", full.names=T)) {
             count_timing_disagree = count_timing_disagree + 1
             # problematic = c(problematic, svid)
             
-            res = data.frame(svid=svid,
-                             timing[which(grepl(paste(svid, "_", sep=""), timing$svid)),c("timing", "prob_gained", "prob_not_gained", "prob_subclonal")],
-                             output[which(grepl(paste(svid, "_", sep=""), timing$svid)),c("ccf", "major_cn", "minor_cn", "mcn", "mult")],
-                             assign_probs[which(grepl(paste(svid, "_", sep=""), timing$svid)),grepl("cluster_", colnames(assign_probs))])
+            #res = data.frame(svid=svid,
+            #                 timing[which(grepl(paste(svid, "_", sep=""), timing$svid)),c("timing", "prob_gained", "prob_not_gained", "prob_subclonal")],
+            #                 output[which(grepl(paste(svid, "_", sep=""), timing$svid)),c("ccf", "major_cn", "minor_cn", "mcn", "mult")],
+            #                 assign_probs[which(grepl(paste(svid, "_", sep=""), timing$svid)),grepl("cluster_", colnames(assign_probs))])
             # problematic = rbind(problematic, res)
           }
         }
@@ -175,10 +175,12 @@ for (infile in list.files(indir, pattern="_assignment.RData", full.names=T)) {
     
     # add missing SV ids that did not make it into the SVclone output
     sv_timing = add_missing_entries(sv_vcf_file, "GRCh37", sv_timing)
-    sv_output = add_missing_entries(sv_vcf_file, "GRCh37", sv_output)
+    #sv_output = add_missing_entries(sv_vcf_file, "GRCh37", sv_output)
     
     timing = do.call(rbind, list(snv_timing, indel_timing, sv_timing))
-    assign_probs = do.call(rbind, list(snv_output, indel_output, sv_output))
+    #assign_probs = do.call(rbind, list(snv_output, indel_output, sv_output))
+
+
     
   } else {
     sv_output = NULL
@@ -186,6 +188,18 @@ for (infile in list.files(indir, pattern="_assignment.RData", full.names=T)) {
     assign_probs = rbind(snv_output, indel_output)
   }
   timing[, c("chromosome", "position", "chromosome2", "position2")] = assign_probs[, c("chromosome", "position", "chromosome2", "position2")]
+
+  all_timing_probs = timing[,grepl("prob_", colnames(timing)), drop=F]
+  if (any(all_timing_probs < 0, na.rm=T)) {
+    if (all(all_timing_probs[!is.na(all_timing_probs) & all_timing_probs < 0] > -2*.Machine$double.eps)) {
+      print("Encountered negative timing probabilities due to rounding")
+      all_timing_probs[!is.na(all_timing_probs) & all_timing_probs < 0] = round(all_timing_probs[!is.na(all_timing_probs) & all_timing_probs < 0])
+      timing[,grepl("prob_", colnames(timing))] = all_timing_probs
+    } else {
+      stop("Encountered major negative timing probabilities")
+    }
+  }
+
   write.table(timing, file=file.path(outputdir, paste0(samplename, "_prob_gained.txt")), quote=F, row.names=F, sep="\t")
   
   timing_disagree = rbind(timing_disagree, data.frame(samplename=samplename, count=count_timing_disagree, stringsAsFactors=F))
