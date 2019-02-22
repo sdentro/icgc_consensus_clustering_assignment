@@ -62,12 +62,12 @@ for (infile in list.files(indir, pattern="_assignment.RData", full.names=T)) {
   }
   if (!is.null(vcf_sv) && !all(is.na(MCN_sv$D$MutCN))) {
     output_sv = rbind(get_ccf(vcf_sv, MCN_sv$D, purity), get_ccf(vcf_sv_alt, MCN_sv_alt$D, purity))
-    # sync chromosome and position
-    output_sv[, c("chromosome", "position", "chromosome2", "position2")] = sv_output[,c("chromosome", "position", "chromosome2", "position2")]
     output_sv$type = "SV"
-    output_sv$svid = NA
+    output_sv$svid = final_pcawg11_output$sv_assignments$id
     # add missing SV ids that did not make it into the SVclone output - this fills in the svid too
     output_sv = add_missing_entries(sv_vcf_file, "GRCh37", output_sv)
+    # sync chromosome and position
+    output_sv[, c("chromosome", "position", "chromosome2", "position2")] = sv_output[,c("chromosome", "position", "chromosome2", "position2")]
   } else {
     output_sv = NULL
   }
